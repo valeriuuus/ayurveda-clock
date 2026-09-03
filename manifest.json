@@ -1,0 +1,15 @@
+{
+  "name": "Аюрведические Часы",
+  "short_name": "Доша Часы",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#12121e",
+  "theme_color": "#12121e",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/869/869869.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

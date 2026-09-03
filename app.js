@@ -1,24 +1,24 @@
 const DOSHA_CONFIG = {
-  KAPHA: { name: "Kapha", ruName: "Капха", color: "#8A9A5B", class: "kapha", desc: "Период заземления, структуры и медлительности. Подходит для пробуждения, плавного вхождения в день и вечернего расслабления." },
-  PITTA: { name: "Pitta", ruName: "Питта", color: "#E56B55", class: "pitta", desc: "Период огня и метаболизма. Идеально для основного приема пищи (обеда) и активной умственной/физической работы." },
-  VATA: { name: "Vata", ruName: "Вата", color: "#5B84B1", class: "vata", desc: "Период движения и легкости. Подходит для творчества, духовных практик (Брахма-мухурта) и легких дел." }
+  KAPHA: { name: "Капха", color: "#16a085", class: "kapha" },
+  PITTA: { name: "Питта", color: "#d35400", class: "pitta" },
+  VATA: { name: "Вата", color: "#5c6bc0", class: "vata" }
 };
 
 let currentCoords = null;
 let selectedDate = new Date();
+let currentCityName = "ВИННИЦА";
 
 document.addEventListener('DOMContentLoaded', () => {
   initDatePicker();
   initLocationControls();
   tryAutoLocation();
-  setInterval(updateClock, 30000);
+  setInterval(updateClock, 1000); // Секундное обновление для таймера
   registerServiceWorker();
 });
 
 function initDatePicker() {
   const dateInput = document.getElementById('input-date');
-  const todayStr = selectedDate.toISOString().split('T')[0];
-  dateInput.value = todayStr;
+  dateInput.value = selectedDate.toISOString().split('T')[0];
 
   dateInput.addEventListener('change', (e) => {
     if (e.target.value) {
@@ -33,7 +33,7 @@ function initDatePicker() {
 function tryAutoLocation() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      pos => setLocation(pos.coords.latitude, pos.coords.longitude, "Ваше местоположение"),
+      pos => setLocation(pos.coords.latitude, pos.coords.longitude, "ВИННИЦА"),
       () => fetchIPLocation()
     );
   } else {
@@ -44,16 +44,15 @@ function tryAutoLocation() {
 function fetchIPLocation() {
   fetch('https://api.country.is')
     .then(res => res.json())
-    .then(data => {
-      setLocation(50.45, 30.52, `Локация по IP (${data.country})`);
-    })
-    .catch(() => setLocation(50.45, 30.52, "Киев (по умолчанию)"));
+    .then(data => setLocation(49.23, 28.46, "ВИННИЦА"))
+    .catch(() => setLocation(49.23, 28.46, "ВИННИЦА"));
 }
 
 function setLocation(lat, lng, label) {
   currentCoords = { lat, lng };
+  currentCityName = label.split(',')[0].toUpperCase();
   document.getElementById('location-name').textContent = label;
-  localStorage.setItem('dosha_coords', JSON.stringify({ lat, lng, label }));
+  document.getElementById('clock-center-city').textContent = currentCityName;
   updateClock();
 }
 
@@ -62,9 +61,8 @@ function initLocationControls() {
   const cityInput = document.getElementById('input-city');
   const countriesDatalist = document.getElementById('datalist-countries');
   const citiesDatalist = document.getElementById('datalist-cities');
-  const autoBtn = document.getElementById('btn-auto-location');
 
-  autoBtn.addEventListener('click', tryAutoLocation);
+  document.getElementById('btn-auto-location').addEventListener('click', tryAutoLocation);
 
   fetch('https://countriesnow.space/api/v0.1/countries')
     .then(res => res.json())
@@ -82,7 +80,6 @@ function initLocationControls() {
     cityInput.value = '';
     cityInput.disabled = true;
     citiesDatalist.innerHTML = '';
-
     if (!country) return;
 
     fetch('https://countriesnow.space/api/v0.1/countries/cities', {
@@ -93,7 +90,6 @@ function initLocationControls() {
     .then(res => res.json())
     .then(data => {
       if (data.data && data.data.length > 0) {
-        citiesDatalist.innerHTML = '';
         data.data.forEach(city => {
           const opt = document.createElement('option');
           opt.value = city;
@@ -113,7 +109,7 @@ function initLocationControls() {
       .then(res => res.json())
       .then(data => {
         if (data && data.length > 0) {
-          setLocation(parseFloat(data[0].lat), parseFloat(data[0].lon), `${city}, ${country}`);
+          setLocation(parseFloat(data[0].lat), parseFloat(data[0].lon), city);
         }
       });
   });
@@ -122,20 +118,25 @@ function initLocationControls() {
 function updateClock() {
   if (!currentCoords) return;
 
-  const calcDate = new Date(selectedDate);
+  const now = new Date();
+  const calcDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), now.getHours(), now.getMinutes(), now.getSeconds());
   const startOfDay = new Date(calcDate.getFullYear(), calcDate.getMonth(), calcDate.getDate(), 0, 0, 0);
+  
   const times = SunCalc.getTimes(calcDate, currentCoords.lat, currentCoords.lng);
   
   let sunrise = times.sunrise;
   let sunset = times.sunset;
   let solarNoon = times.solarNoon;
-  let nadir = times.nadir; // Астрономическая полночь
+  let nadir = times.nadir;
 
   let dayDuration = sunset - sunrise;
   let nightDuration = (24 * 3600 * 1000) - dayDuration;
 
   const brahmaStart = new Date(sunrise.getTime() - (96 * 60 * 1000));
   const brahmaEnd = new Date(sunrise.getTime() - (48 * 60 * 1000));
+
+  // Время в центре циферблата
+  document.getElementById('clock-center-time').textContent = formatTime(calcDate);
 
   // Таблица 1
   document.getElementById('time-sunrise').textContent = formatTime(sunrise);
@@ -148,36 +149,74 @@ function updateClock() {
   document.getElementById('time-daylength').textContent = `${dayHrs} ч ${dayMins} мин`;
   document.getElementById('time-brahma').textContent = `${formatTime(brahmaStart)} - ${formatTime(brahmaEnd)}`;
 
-  // Расчет 6 динамических интервалов
+  // 6 интервалов
   const dayThird = dayDuration / 3;
   const nightThird = nightDuration / 3;
 
   const intervals = [
-    { phase: "Предрассветные часы", name: 'VATA', start: new Date(sunrise.getTime() - nightThird), end: sunrise, isDay: false },
-    { phase: "Раннее утро", name: 'KAPHA', start: sunrise, end: new Date(sunrise.getTime() + dayThird), isDay: true },
-    { phase: "Середина дня", name: 'PITTA', start: new Date(sunrise.getTime() + dayThird), end: new Date(sunrise.getTime() + 2 * dayThird), isDay: true },
-    { phase: "Вторая половина дня", name: 'VATA', start: new Date(sunrise.getTime() + 2 * dayThird), end: sunset, isDay: true },
-    { phase: "Вечер", name: 'KAPHA', start: sunset, end: new Date(sunset.getTime() + nightThird), isDay: false },
-    { phase: "Глубокая ночь", name: 'PITTA', start: new Date(sunset.getTime() + nightThird), end: new Date(sunset.getTime() + 2 * nightThird), isDay: false }
+    { phase: "предрассветные часы", name: 'VATA', start: new Date(sunrise.getTime() - nightThird), end: sunrise, isDay: false },
+    { phase: "раннее утро", name: 'KAPHA', start: sunrise, end: new Date(sunrise.getTime() + dayThird), isDay: true },
+    { phase: "середина дня", name: 'PITTA', start: new Date(sunrise.getTime() + dayThird), end: new Date(sunrise.getTime() + 2 * dayThird), isDay: true },
+    { phase: "вторая половина дня", name: 'VATA', start: new Date(sunrise.getTime() + 2 * dayThird), end: sunset, isDay: true },
+    { phase: "вечер", name: 'KAPHA', start: sunset, end: new Date(sunset.getTime() + nightThird), isDay: false },
+    { phase: "глубокая ночь", name: 'PITTA', start: new Date(sunset.getTime() + nightThird), end: new Date(sunset.getTime() + 2 * nightThird), isDay: false }
   ];
 
-  // Отрисовка секторов и названий по дуге
-  drawClockSectorsAndLabels(intervals, startOfDay);
+  drawClockSectors(intervals, startOfDay, sunrise, sunset);
 
-  // Поворот стрелки строго относительно 24 часов
+  // Поворот стрелки
   const msFromStartOfDay = calcDate - startOfDay;
   const currentAngle = (msFromStartOfDay / (24 * 3600 * 1000)) * 360;
   document.getElementById('hand-group').setAttribute('transform', `rotate(${currentAngle}, 200, 200)`);
 
-  // Определение активной фазы и подсветка меток времени
-  let activeInterval = null;
+  // Поиск активной и следующей доши
+  let activeIndex = -1;
+  for (let i = 0; i < intervals.length; i++) {
+    if (calcDate >= intervals[i].start && calcDate < intervals[i].end) {
+      activeIndex = i;
+      break;
+    }
+  }
+
+  if (activeIndex !== -1) {
+    const activeInterval = intervals[activeIndex];
+    const nextInterval = intervals[(activeIndex + 1) % intervals.length];
+    
+    const activeConfig = DOSHA_CONFIG[activeInterval.name];
+    const nextConfig = DOSHA_CONFIG[nextInterval.name];
+
+    // Мета периода
+    const totalMs = activeInterval.end - activeInterval.start;
+    const passedMs = calcDate - activeInterval.start;
+    const remainMs = activeInterval.end - calcDate;
+
+    const totalHrs = Math.floor(totalMs / (3600 * 1000));
+    const totalMins = Math.round((totalMs % (3600 * 1000)) / (60 * 1000));
+
+    // Обновление UI карточки
+    const titleEl = document.getElementById('current-dosha-title');
+    titleEl.textContent = activeConfig.name;
+    titleEl.style.color = activeConfig.color;
+
+    document.getElementById('current-dosha-meta').textContent = 
+      `${activeInterval.phase} · ${formatTime(activeInterval.start)} — ${formatTime(activeInterval.end)} · ${totalHrs} ч ${totalMins} м`;
+
+    // Прогресс бар
+    const progressPercent = Math.min(100, Math.max(0, (passedMs / totalMs) * 100));
+    const progressBar = document.getElementById('dosha-progress-bar');
+    progressBar.style.width = `${progressPercent}%`;
+    progressBar.style.background = activeConfig.color;
+
+    // Обратный отсчет
+    document.getElementById('next-dosha-label').textContent = `ДО ПЕРЕХОДА В ${nextConfig.name.toUpperCase()}`;
+    document.getElementById('countdown-timer').textContent = formatCountdown(remainMs);
+  }
+
+  // Таблица 2
   const tableBody = document.getElementById('dosha-schedule-body');
   tableBody.innerHTML = '';
-
-  intervals.forEach(item => {
-    const isActive = (calcDate >= item.start && calcDate < item.end);
-    if (isActive) activeInterval = item;
-
+  intervals.forEach((item, idx) => {
+    const isActive = (idx === activeIndex);
     const durMs = item.end - item.start;
     const hrs = Math.floor(durMs / (3600 * 1000));
     const mins = Math.round((durMs % (3600 * 1000)) / (60 * 1000));
@@ -193,93 +232,52 @@ function updateClock() {
     `;
     tableBody.appendChild(tr);
   });
-
-  if (activeInterval) {
-    const activeDosha = DOSHA_CONFIG[activeInterval.name];
-    const badge = document.getElementById('current-dosha-badge');
-    badge.textContent = activeDosha.name;
-    badge.className = `badge ${activeDosha.class}`;
-    document.getElementById('current-dosha-title').textContent = `Период: ${activeDosha.name} (${activeDosha.ruName})`;
-    document.getElementById('current-dosha-desc').textContent = activeDosha.desc;
-
-    // Подсветка меток времени 24, 3, 6, 12, 15, 18, попадающих в текущую дошу
-    highlightActiveTimeLabels(activeInterval, startOfDay);
-  }
 }
 
-function highlightActiveTimeLabels(activeInterval, startOfDay) {
-  const timeHoursMap = {
-    'time-lbl-24': 0,
-    'time-lbl-3': 3,
-    'time-lbl-6': 6,
-    'time-lbl-12': 12,
-    'time-lbl-15': 15,
-    'time-lbl-18': 18
-  };
-
-  Object.entries(timeHoursMap).forEach(([id, hour]) => {
-    const labelDate = new Date(startOfDay.getFullYear(), startOfDay.getMonth(), startOfDay.getDate(), hour, 0, 0);
-    const el = document.getElementById(id);
-    if (labelDate >= activeInterval.start && labelDate < activeInterval.end) {
-      el.classList.add('active-time');
-    } else {
-      el.classList.remove('active-time');
-    }
-  });
-}
-
-function drawClockSectorsAndLabels(intervals, startOfDay) {
+function drawClockSectors(intervals, startOfDay, sunrise, sunset) {
   const sectorsGroup = document.getElementById('sectors-group');
-  const labelsGroup = document.getElementById('dosha-labels-group');
-  const defsGroup = document.getElementById('text-paths-defs');
-
+  const ticksGroup = document.getElementById('ticks-group');
+  
   sectorsGroup.innerHTML = '';
-  labelsGroup.innerHTML = '';
-  defsGroup.innerHTML = '';
+  ticksGroup.innerHTML = '';
 
-  const cx = 200, cy = 200, rArc = 140, rText = 140;
+  const cx = 200, cy = 200, rArc = 145;
 
-  intervals.forEach((interval, index) => {
+  // Отрисовка секторов дош
+  intervals.forEach(interval => {
     const startMs = interval.start - startOfDay;
     const endMs = interval.end - startOfDay;
 
     const startAngle = (startMs / (24 * 3600 * 1000)) * 360;
     const endAngle = (endMs / (24 * 3600 * 1000)) * 360;
-    const midAngle = startAngle + (endAngle - startAngle) / 2;
-
     const config = DOSHA_CONFIG[interval.name];
 
-    // Отрисовка пропорциональной дуги сектора
     const pathData = describeArc(cx, cy, rArc, startAngle, endAngle);
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", config.color);
-    path.setAttribute("stroke-width", "50");
-    path.setAttribute("opacity", interval.isDay ? "0.9" : "0.65");
+    path.setAttribute("stroke-width", "32");
     sectorsGroup.appendChild(path);
 
-    // Создание пути вдоль окружности для изогнутого текста VATA / PITTA / KAPHA
-    const textPathId = `dosha-path-${index}`;
-    const textArcData = describeArc(cx, cy, rText, midAngle - 25, midAngle + 25);
-    
-    const textPathDef = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    textPathDef.setAttribute("id", textPathId);
-    textPathDef.setAttribute("d", textArcData);
-    defsGroup.appendChild(textPathDef);
-
-    const textNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    textNode.setAttribute("class", "dosha-text-path");
-
-    const textPathNode = document.createElementNS("http://www.w3.org/2000/svg", "textPath");
-    textPathNode.setAttributeNS("http://www.w3.org/1999/xlink", "href", `#${textPathId}`);
-    textPathNode.setAttribute("startOffset", "50%");
-    textPathNode.setAttribute("text-anchor", "middle");
-    textPathNode.textContent = config.name;
-
-    textNode.appendChild(textPathNode);
-    labelsGroup.appendChild(textNode);
+    // Радиальная черточка разметки
+    const tickPos1 = polarToCartesian(cx, cy, 163, startAngle);
+    const tickPos2 = polarToCartesian(cx, cy, 169, startAngle);
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    line.setAttribute("x1", tickPos1.x);
+    line.setAttribute("y1", tickPos1.y);
+    line.setAttribute("x2", tickPos2.x);
+    line.setAttribute("y2", tickPos2.y);
+    line.setAttribute("stroke", "#bdc3c7");
+    line.setAttribute("stroke-width", "2");
+    ticksGroup.appendChild(line);
   });
+
+  // Внутренняя золотистая дуга дня
+  const sunriseAngle = ((sunrise - startOfDay) / (24 * 3600 * 1000)) * 360;
+  const sunsetAngle = ((sunset - startOfDay) / (24 * 3600 * 1000)) * 360;
+  const dayArcData = describeArc(cx, cy, 118, sunriseAngle, sunsetAngle);
+  document.getElementById('inner-day-arc').setAttribute('d', dayArcData);
 }
 
 function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
@@ -300,6 +298,14 @@ function describeArc(x, y, radius, startAngle, endAngle) {
 function formatTime(date) {
   if (!date || isNaN(date)) return "--:--";
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatCountdown(ms) {
+  if (ms <= 0) return "0:00:00";
+  const seconds = Math.floor((ms / 1000) % 60);
+  const minutes = Math.floor((ms / (1000 * 60)) % 60);
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
 function registerServiceWorker() {

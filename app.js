@@ -1,7 +1,7 @@
 const DOSHA_CONFIG = {
-  KAPHA: { name: "Капха", color: "#8A9A5B", class: "kapha", desc: "Период заземления, тяжести и медлительности. Подходит для пробуждения, плавного вхождения в день и вечернего расслабления." },
-  PITTA: { name: "Питта", color: "#E56B55", class: "pitta", desc: "Период огня и максимального метаболизма. Идеально для главного приема пищи (обеда) и активной умственной/физической работы." },
-  VATA: { name: "Вата", color: "#5B84B1", class: "vata", desc: "Период движения, эфира и легкости. Подходит для творчества, духовных практик (Брахма-мухурта) и лёгкой активности." }
+  KAPHA: { name: "Kapha", ruName: "Капха", color: "#8A9A5B", class: "kapha", desc: "Период заземления, структуры и медлительности. Подходит для пробуждения, плавного вхождения в день и вечернего расслабления." },
+  PITTA: { name: "Pitta", ruName: "Питта", color: "#E56B55", class: "pitta", desc: "Период огня и метаболизма. Идеально для основного приема пищи (обеда) и активной умственной/физической работы." },
+  VATA: { name: "Vata", ruName: "Вата", color: "#5B84B1", class: "vata", desc: "Период движения и легкости. Подходит для творчества, духовных практик (Брахма-мухурта) и легких дел." }
 };
 
 let currentCoords = null;
@@ -9,7 +9,7 @@ let currentCoords = null;
 document.addEventListener('DOMContentLoaded', () => {
   initLocationControls();
   tryAutoLocation();
-  setInterval(updateClock, 60000);
+  setInterval(updateClock, 30000); // Обновление каждые 30 секунд
   registerServiceWorker();
 });
 
@@ -28,7 +28,6 @@ function fetchIPLocation() {
   fetch('https://api.country.is')
     .then(res => res.json())
     .then(data => {
-      document.getElementById('location-name').textContent = `Страна: ${data.country} (по IP)`;
       setLocation(50.45, 30.52, `Локация по IP (${data.country})`);
     })
     .catch(() => setLocation(50.45, 30.52, "Киев (по умолчанию)"));
@@ -131,11 +130,10 @@ function updateClock() {
     { name: 'VATA', start: new Date(sunset.getTime() + 2 * nightThird), end: new Date(sunset.getTime() + 3 * nightThird), isDay: false }
   ];
 
-  drawClockSectors(intervals);
+  drawClockSectorsAndLabels(intervals);
 
+  // Расчет поворота стрелки относительно текущего времени
   let currentAngle = 0;
-  let activeDosha = null;
-
   if (now >= sunrise && now < sunset) {
     const progress = (now - sunrise) / dayDuration;
     currentAngle = progress * 180;
@@ -151,6 +149,8 @@ function updateClock() {
 
   document.getElementById('hand-group').setAttribute('transform', `rotate(${currentAngle}, 200, 200)`);
 
+  // Определение активной Доши
+  let activeDosha = null;
   intervals.forEach(item => {
     if (now >= item.start && now < item.end) {
       activeDosha = DOSHA_CONFIG[item.name];
@@ -161,31 +161,45 @@ function updateClock() {
     const badge = document.getElementById('current-dosha-badge');
     badge.textContent = activeDosha.name;
     badge.className = `badge ${activeDosha.class}`;
-    document.getElementById('current-dosha-title').textContent = `Период: ${activeDosha.name}`;
+    document.getElementById('current-dosha-title').textContent = `Период: ${activeDosha.name} (${activeDosha.ruName})`;
     document.getElementById('current-dosha-desc').textContent = activeDosha.desc;
   }
 }
 
-function drawClockSectors(intervals) {
-  const g = document.getElementById('sectors-group');
-  g.innerHTML = '';
+function drawClockSectorsAndLabels(intervals) {
+  const sectorsGroup = document.getElementById('sectors-group');
+  const labelsGroup = document.getElementById('dosha-labels-group');
+  sectorsGroup.innerHTML = '';
+  labelsGroup.innerHTML = '';
 
-  const cx = 200, cy = 200, r = 175;
+  const cx = 200, cy = 200, rArc = 155, rText = 155;
 
   intervals.forEach((interval, index) => {
     const startAngle = index * 60;
     const endAngle = (index + 1) * 60;
+    const midAngle = startAngle + 30;
     const config = DOSHA_CONFIG[interval.name];
 
-    const pathData = describeArc(cx, cy, r, startAngle, endAngle);
+    // Рисуем дугу сектора
+    const pathData = describeArc(cx, cy, rArc, startAngle, endAngle);
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
     path.setAttribute("fill", "none");
     path.setAttribute("stroke", config.color);
-    path.setAttribute("stroke-width", "25");
-    path.setAttribute("opacity", interval.isDay ? "0.9" : "0.6");
+    path.setAttribute("stroke-width", "36");
+    path.setAttribute("opacity", interval.isDay ? "0.9" : "0.55");
+    sectorsGroup.appendChild(path);
 
-    g.appendChild(path);
+    // Добавляем текстовую метку (Vata, Kapha, Pitta)
+    const pos = polarToCartesian(cx, cy, rText, midAngle);
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    text.setAttribute("x", pos.x);
+    text.setAttribute("y", pos.y + 4);
+    text.setAttribute("class", "dosha-text");
+    text.setAttribute("fill", "#ffffff");
+    text.setAttribute("text-anchor", "middle");
+    text.textContent = config.name;
+    labelsGroup.appendChild(text);
   });
 }
 

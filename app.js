@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDatePicker();
   initLocationControls();
   tryAutoLocation();
-  setInterval(updateClock, 1000); // Секундное обновление для таймера
+  setInterval(updateClock, 1000);
   registerServiceWorker();
 });
 
@@ -164,10 +164,26 @@ function updateClock() {
 
   drawClockSectors(intervals, startOfDay, sunrise, sunset);
 
-  // Поворот стрелки
+  // Позиционирование полоски-маркера ВНУТРИ сектора доши
   const msFromStartOfDay = calcDate - startOfDay;
   const currentAngle = (msFromStartOfDay / (24 * 3600 * 1000)) * 360;
-  document.getElementById('hand-group').setAttribute('transform', `rotate(${currentAngle}, 200, 200)`);
+  
+  const cx = 200, cy = 200;
+  const rInner = 129; // Внутренний край полосы кольца
+  const rOuter = 161; // Внешний край полосы кольца
+
+  const ptInner = polarToCartesian(cx, cy, rInner, currentAngle);
+  const ptOuter = polarToCartesian(cx, cy, rOuter, currentAngle);
+
+  const markerLine = document.getElementById('time-marker-line');
+  markerLine.setAttribute('x1', ptInner.x);
+  markerLine.setAttribute('y1', ptInner.y);
+  markerLine.setAttribute('x2', ptOuter.x);
+  markerLine.setAttribute('y2', ptOuter.y);
+
+  const markerDot = document.getElementById('time-marker-dot');
+  markerDot.setAttribute('cx', ptInner.x);
+  markerDot.setAttribute('cy', ptInner.y);
 
   // Поиск активной и следующей доши
   let activeIndex = -1;
@@ -260,7 +276,7 @@ function drawClockSectors(intervals, startOfDay, sunrise, sunset) {
     path.setAttribute("stroke-width", "32");
     sectorsGroup.appendChild(path);
 
-    // Радиальная черточка разметки
+    // Радиальная черточка разметки (между дошами)
     const tickPos1 = polarToCartesian(cx, cy, 163, startAngle);
     const tickPos2 = polarToCartesian(cx, cy, 169, startAngle);
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -268,8 +284,8 @@ function drawClockSectors(intervals, startOfDay, sunrise, sunset) {
     line.setAttribute("y1", tickPos1.y);
     line.setAttribute("x2", tickPos2.x);
     line.setAttribute("y2", tickPos2.y);
-    line.setAttribute("stroke", "#bdc3c7");
-    line.setAttribute("stroke-width", "2");
+    line.setAttribute("stroke", "#ffffff");
+    line.setAttribute("stroke-width", "2.5");
     ticksGroup.appendChild(line);
   });
 

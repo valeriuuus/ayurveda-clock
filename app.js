@@ -1,7 +1,133 @@
+// --- Словари локализации ---
+const TRANSLATIONS = {
+  ru: {
+    appTitle: "Аюрведические Часы",
+    locDetecting: "Определение локации...",
+    lblSelectDate: "📅 Выберите дату:",
+    btnAutoLoc: "📍 Автовыбор (GPS)",
+    phCountry: "🔍 Введите или выберите страну...",
+    phCity: "🔍 Введите или выберите город...",
+    lblNow: "СЕЙЧАС",
+    tblAstroTitle: "Астрономические данные",
+    lblSunrise: "🌅 Восход:",
+    lblNoon: "☀️ Солнечный полдень:",
+    lblSunset: "🌇 Закат:",
+    lblMidnight: "🌌 Полночь:",
+    lblDayLength: "⏳ Долгота дня:",
+    lblBrahma: "🧘‍♂️ Брахма-мухурта:",
+    tblScheduleTitle: "Расписание Дош на день",
+    thPhase: "Фаза",
+    thDosha: "Доша",
+    thTime: "Время",
+    thDuration: "Длит.",
+    untilTransition: "ДО ПЕРЕХОДА В",
+    unitH: "ч",
+    unitM: "мин",
+    doshas: {
+      KAPHA: "Капха",
+      PITTA: "Питта",
+      VATA: "Вата"
+    },
+    phases: {
+      predawn: "предрассветные часы",
+      earlyMorning: "раннее утро",
+      midday: "середина дня",
+      afternoon: "вторая половина дня",
+      evening: "вечер",
+      deepNight: "глубокая ночь"
+    }
+  },
+  uk: {
+    appTitle: "Аюрведичний Годинник",
+    locDetecting: "Визначення локації...",
+    lblSelectDate: "📅 Оберіть дату:",
+    btnAutoLoc: "📍 Автовибір (GPS)",
+    phCountry: "🔍 Введіть або оберіть країну...",
+    phCity: "🔍 Введіть або оберіть місто...",
+    lblNow: "ЗАРАЗ",
+    tblAstroTitle: "Астрономічні дані",
+    lblSunrise: "🌅 Схід сонця:",
+    lblNoon: "☀️ Сонячний полудень:",
+    lblSunset: "🌇 Захід сонця:",
+    lblMidnight: "🌌 Північ:",
+    lblDayLength: "⏳ Тривалість дня:",
+    lblBrahma: "🧘‍♂️ Брахма-мухурта:",
+    tblScheduleTitle: "Розклад Дош на день",
+    thPhase: "Фаза",
+    thDosha: "Доша",
+    thTime: "Час",
+    thDuration: "Трив.",
+    untilTransition: "ДО ПЕРЕХОДУ В",
+    unitH: "г",
+    unitM: "хв",
+    doshas: {
+      KAPHA: "Капха",
+      PITTA: "Пітта",
+      VATA: "Вата"
+    },
+    phases: {
+      predawn: "передсвітанкові години",
+      earlyMorning: "ранок",
+      midday: "середина дня",
+      afternoon: "друга половина дня",
+      evening: "вечір",
+      deepNight: "глибока ніч"
+    }
+  },
+  en: {
+    appTitle: "Ayurvedic Clock",
+    locDetecting: "Detecting location...",
+    lblSelectDate: "📅 Select date:",
+    btnAutoLoc: "📍 Auto Location (GPS)",
+    phCountry: "🔍 Enter or select country...",
+    phCity: "🔍 Enter or select city...",
+    lblNow: "NOW",
+    tblAstroTitle: "Astronomical Data",
+    lblSunrise: "🌅 Sunrise:",
+    lblNoon: "☀️ Solar Noon:",
+    lblSunset: "🌇 Sunset:",
+    lblMidnight: "🌌 Midnight:",
+    lblDayLength: "⏳ Day Length:",
+    lblBrahma: "🧘‍♂️ Brahma Muhurta:",
+    tblScheduleTitle: "Daily Dosha Schedule",
+    thPhase: "Phase",
+    thDosha: "Dosha",
+    thTime: "Time",
+    thDuration: "Dur.",
+    untilTransition: "UNTIL TRANSITION TO",
+    unitH: "h",
+    unitM: "m",
+    doshas: {
+      KAPHA: "Kapha",
+      PITTA: "Pitta",
+      VATA: "Vata"
+    },
+    phases: {
+      predawn: "pre-dawn hours",
+      earlyMorning: "early morning",
+      midday: "midday",
+      afternoon: "afternoon",
+      evening: "evening",
+      deepNight: "deep night"
+    }
+  }
+};
+
+// Определение языка интерфейса
+function detectLanguage() {
+  const lang = (navigator.language || navigator.userLanguage || 'ru').toLowerCase();
+  if (lang.startsWith('uk')) return 'uk';
+  if (lang.startsWith('ru')) return 'ru';
+  return 'en';
+}
+
+const currentLang = detectLanguage();
+const t = TRANSLATIONS[currentLang];
+
 const DOSHA_CONFIG = {
-  KAPHA: { name: "Капха", color: "#16a085", class: "kapha" },
-  PITTA: { name: "Питта", color: "#d35400", class: "pitta" },
-  VATA: { name: "Вата", color: "#5c6bc0", class: "vata" }
+  KAPHA: { color: "#16a085", class: "kapha" },
+  PITTA: { color: "#d35400", class: "pitta" },
+  VATA: { color: "#5c6bc0", class: "vata" }
 };
 
 let currentCoords = null;
@@ -9,12 +135,25 @@ let selectedDate = new Date();
 let currentCityName = "ВИННИЦА";
 
 document.addEventListener('DOMContentLoaded', () => {
+  applyStaticTranslations();
   initDatePicker();
   initLocationControls();
   tryAutoLocation();
   setInterval(updateClock, 1000);
   registerServiceWorker();
 });
+
+function applyStaticTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key]) el.textContent = t[key];
+  });
+
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.getAttribute('data-i18n-ph');
+    if (t[key]) el.setAttribute('placeholder', t[key]);
+  });
+}
 
 function initDatePicker() {
   const dateInput = document.getElementById('input-date');
@@ -33,7 +172,7 @@ function initDatePicker() {
 function tryAutoLocation() {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      pos => setLocation(pos.coords.latitude, pos.coords.longitude, "ВИННИЦА"),
+      pos => setLocation(pos.coords.latitude, pos.coords.longitude, "VINNYTSIA"),
       () => fetchIPLocation()
     );
   } else {
@@ -44,8 +183,8 @@ function tryAutoLocation() {
 function fetchIPLocation() {
   fetch('https://api.country.is')
     .then(res => res.json())
-    .then(data => setLocation(49.23, 28.46, "ВИННИЦА"))
-    .catch(() => setLocation(49.23, 28.46, "ВИННИЦА"));
+    .then(() => setLocation(49.23, 28.46, "VINNYTSIA"))
+    .catch(() => setLocation(49.23, 28.46, "VINNYTSIA"));
 }
 
 function setLocation(lat, lng, label) {
@@ -135,10 +274,8 @@ function updateClock() {
   const brahmaStart = new Date(sunrise.getTime() - (96 * 60 * 1000));
   const brahmaEnd = new Date(sunrise.getTime() - (48 * 60 * 1000));
 
-  // Время в центре циферблата
   document.getElementById('clock-center-time').textContent = formatTime(calcDate);
 
-  // Таблица 1
   document.getElementById('time-sunrise').textContent = formatTime(sunrise);
   document.getElementById('time-noon').textContent = formatTime(solarNoon);
   document.getElementById('time-sunset').textContent = formatTime(sunset);
@@ -146,31 +283,30 @@ function updateClock() {
   
   const dayHrs = Math.floor(dayDuration / (3600 * 1000));
   const dayMins = Math.round((dayDuration % (3600 * 1000)) / (60 * 1000));
-  document.getElementById('time-daylength').textContent = `${dayHrs} ч ${dayMins} мин`;
+  document.getElementById('time-daylength').textContent = `${dayHrs} ${t.unitH} ${dayMins} ${t.unitM}`;
   document.getElementById('time-brahma').textContent = `${formatTime(brahmaStart)} - ${formatTime(brahmaEnd)}`;
 
-  // 6 интервалов
   const dayThird = dayDuration / 3;
   const nightThird = nightDuration / 3;
 
   const intervals = [
-    { phase: "предрассветные часы", name: 'VATA', start: new Date(sunrise.getTime() - nightThird), end: sunrise, isDay: false },
-    { phase: "раннее утро", name: 'KAPHA', start: sunrise, end: new Date(sunrise.getTime() + dayThird), isDay: true },
-    { phase: "середина дня", name: 'PITTA', start: new Date(sunrise.getTime() + dayThird), end: new Date(sunrise.getTime() + 2 * dayThird), isDay: true },
-    { phase: "вторая половина дня", name: 'VATA', start: new Date(sunrise.getTime() + 2 * dayThird), end: sunset, isDay: true },
-    { phase: "вечер", name: 'KAPHA', start: sunset, end: new Date(sunset.getTime() + nightThird), isDay: false },
-    { phase: "глубокая ночь", name: 'PITTA', start: new Date(sunset.getTime() + nightThird), end: new Date(sunset.getTime() + 2 * nightThird), isDay: false }
+    { phase: t.phases.predawn, name: 'VATA', start: new Date(sunrise.getTime() - nightThird), end: sunrise, isDay: false },
+    { phase: t.phases.earlyMorning, name: 'KAPHA', start: sunrise, end: new Date(sunrise.getTime() + dayThird), isDay: true },
+    { phase: t.phases.midday, name: 'PITTA', start: new Date(sunrise.getTime() + dayThird), end: new Date(sunrise.getTime() + 2 * dayThird), isDay: true },
+    { phase: t.phases.afternoon, name: 'VATA', start: new Date(sunrise.getTime() + 2 * dayThird), end: sunset, isDay: true },
+    { phase: t.phases.evening, name: 'KAPHA', start: sunset, end: new Date(sunset.getTime() + nightThird), isDay: false },
+    { phase: t.phases.deepNight, name: 'PITTA', start: new Date(sunset.getTime() + nightThird), end: new Date(sunset.getTime() + 2 * nightThird), isDay: false }
   ];
 
   drawClockSectors(intervals, startOfDay, sunrise, sunset);
 
-  // Позиционирование полоски-маркера ВНУТРИ сектора доши
+  // Отрисовка полосы указателя времени
   const msFromStartOfDay = calcDate - startOfDay;
   const currentAngle = (msFromStartOfDay / (24 * 3600 * 1000)) * 360;
   
   const cx = 200, cy = 200;
-  const rInner = 129; // Внутренний край полосы кольца
-  const rOuter = 161; // Внешний край полосы кольца
+  const rInner = 129;
+  const rOuter = 161;
 
   const ptInner = polarToCartesian(cx, cy, rInner, currentAngle);
   const ptOuter = polarToCartesian(cx, cy, rOuter, currentAngle);
@@ -185,7 +321,6 @@ function updateClock() {
   markerDot.setAttribute('cx', ptInner.x);
   markerDot.setAttribute('cy', ptInner.y);
 
-  // Поиск активной и следующей доши
   let activeIndex = -1;
   for (let i = 0; i < intervals.length; i++) {
     if (calcDate >= intervals[i].start && calcDate < intervals[i].end) {
@@ -199,9 +334,9 @@ function updateClock() {
     const nextInterval = intervals[(activeIndex + 1) % intervals.length];
     
     const activeConfig = DOSHA_CONFIG[activeInterval.name];
-    const nextConfig = DOSHA_CONFIG[nextInterval.name];
+    const activeDoshaName = t.doshas[activeInterval.name];
+    const nextDoshaName = t.doshas[nextInterval.name];
 
-    // Мета периода
     const totalMs = activeInterval.end - activeInterval.start;
     const passedMs = calcDate - activeInterval.start;
     const remainMs = activeInterval.end - calcDate;
@@ -209,26 +344,22 @@ function updateClock() {
     const totalHrs = Math.floor(totalMs / (3600 * 1000));
     const totalMins = Math.round((totalMs % (3600 * 1000)) / (60 * 1000));
 
-    // Обновление UI карточки
     const titleEl = document.getElementById('current-dosha-title');
-    titleEl.textContent = activeConfig.name;
+    titleEl.textContent = activeDoshaName;
     titleEl.style.color = activeConfig.color;
 
     document.getElementById('current-dosha-meta').textContent = 
-      `${activeInterval.phase} · ${formatTime(activeInterval.start)} — ${formatTime(activeInterval.end)} · ${totalHrs} ч ${totalMins} м`;
+      `${activeInterval.phase} · ${formatTime(activeInterval.start)} — ${formatTime(activeInterval.end)} · ${totalHrs} ${t.unitH} ${totalMins} ${t.unitM}`;
 
-    // Прогресс бар
     const progressPercent = Math.min(100, Math.max(0, (passedMs / totalMs) * 100));
     const progressBar = document.getElementById('dosha-progress-bar');
     progressBar.style.width = `${progressPercent}%`;
     progressBar.style.background = activeConfig.color;
 
-    // Обратный отсчет
-    document.getElementById('next-dosha-label').textContent = `ДО ПЕРЕХОДА В ${nextConfig.name.toUpperCase()}`;
+    document.getElementById('next-dosha-label').textContent = `${t.untilTransition} ${nextDoshaName.toUpperCase()}`;
     document.getElementById('countdown-timer').textContent = formatCountdown(remainMs);
   }
 
-  // Таблица 2
   const tableBody = document.getElementById('dosha-schedule-body');
   tableBody.innerHTML = '';
   intervals.forEach((item, idx) => {
@@ -242,9 +373,9 @@ function updateClock() {
 
     tr.innerHTML = `
       <td>${item.phase} ${isActive ? '👈' : ''}</td>
-      <td><span class="tag-dosha ${DOSHA_CONFIG[item.name].class}">${DOSHA_CONFIG[item.name].name}</span></td>
+      <td><span class="tag-dosha ${DOSHA_CONFIG[item.name].class}">${t.doshas[item.name]}</span></td>
       <td>${formatTime(item.start)} - ${formatTime(item.end)}</td>
-      <td>${hrs}ч ${mins}м</td>
+      <td>${hrs}${t.unitH} ${mins}${t.unitM}</td>
     `;
     tableBody.appendChild(tr);
   });
@@ -259,7 +390,6 @@ function drawClockSectors(intervals, startOfDay, sunrise, sunset) {
 
   const cx = 200, cy = 200, rArc = 145;
 
-  // Отрисовка секторов дош
   intervals.forEach(interval => {
     const startMs = interval.start - startOfDay;
     const endMs = interval.end - startOfDay;
@@ -276,7 +406,6 @@ function drawClockSectors(intervals, startOfDay, sunrise, sunset) {
     path.setAttribute("stroke-width", "32");
     sectorsGroup.appendChild(path);
 
-    // Радиальная черточка разметки (между дошами)
     const tickPos1 = polarToCartesian(cx, cy, 163, startAngle);
     const tickPos2 = polarToCartesian(cx, cy, 169, startAngle);
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -289,7 +418,6 @@ function drawClockSectors(intervals, startOfDay, sunrise, sunset) {
     ticksGroup.appendChild(line);
   });
 
-  // Внутренняя золотистая дуга дня
   const sunriseAngle = ((sunrise - startOfDay) / (24 * 3600 * 1000)) * 360;
   const sunsetAngle = ((sunset - startOfDay) / (24 * 3600 * 1000)) * 360;
   const dayArcData = describeArc(cx, cy, 118, sunriseAngle, sunsetAngle);
@@ -324,8 +452,18 @@ function formatCountdown(ms) {
   return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
+// Автоматическая регистрация и сброс старого Service Worker
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW reg error:', err));
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.onupdatefound = () => {
+        const installingWorker = reg.installing;
+        installingWorker.onstatechange = () => {
+          if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            window.location.reload();
+          }
+        };
+      };
+    }).catch(err => console.log('SW reg error:', err));
   }
 }

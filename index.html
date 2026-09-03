@@ -16,24 +16,19 @@
       <p id="location-name">Определение локации...</p>
     </header>
 
-    <!-- Панель управления: Дата и Геолокация (в колонку) -->
     <div class="location-controls">
-      <!-- Выбор даты -->
       <div class="field-group">
         <label for="input-date">📅 Выберите дату:</label>
         <input type="date" id="input-date" class="control-input" />
       </div>
 
-      <!-- Автовыбор GPS -->
       <button id="btn-auto-location" class="btn control-input">📍 Автовыбор (GPS)</button>
 
-      <!-- Поиск и выбор Страны -->
       <div class="field-group">
         <input type="text" id="input-country" class="control-input" list="datalist-countries" placeholder="🔍 Введите или выберите страну..." />
         <datalist id="datalist-countries"></datalist>
       </div>
 
-      <!-- Поиск и выбор Города -->
       <div class="field-group">
         <input type="text" id="input-city" class="control-input" list="datalist-cities" placeholder="🔍 Введите или выберите город..." disabled />
         <datalist id="datalist-cities"></datalist>
@@ -43,24 +38,40 @@
     <!-- Интерактивный SVG Циферблат -->
     <div class="clock-wrapper">
       <svg id="dosha-clock" viewBox="0 0 400 400">
+        <defs>
+          <!-- Пути для текста дош по дуге будут генерироваться в JS -->
+          <g id="text-paths-defs"></g>
+        </defs>
+
+        <!-- Секторы Дош -->
         <g id="sectors-group"></g>
+
+        <!-- Текстовые метки Дош (по дуге) -->
         <g id="dosha-labels-group"></g>
 
-        <circle cx="200" cy="200" r="185" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
-        <circle cx="200" cy="200" r="105" fill="#12121e" stroke="rgba(255,255,255,0.1)" stroke-width="2" />
+        <!-- Разделительные кольца -->
+        <circle cx="200" cy="200" r="170" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+        <circle cx="200" cy="200" r="110" fill="#12121e" stroke="rgba(255,255,255,0.1)" stroke-width="2" />
 
-        <text id="label-top" x="200" y="30" class="time-label" text-anchor="middle">Восход</text>
-        <text id="label-right" x="375" y="205" class="time-label" text-anchor="start">Полдень</text>
-        <text id="label-bottom" x="200" y="388" class="time-label" text-anchor="middle">Закат</text>
-        <text id="label-left" x="25" y="205" class="time-label" text-anchor="end">Полночь</text>
+        <!-- Метки времени вокруг циферблата (24, 3, 6, 12, 15, 18) -->
+        <g id="dial-time-labels">
+          <text id="time-lbl-24" x="200" y="22" class="dial-time-label" text-anchor="middle">24:00</text>
+          <text id="time-lbl-3" x="382" y="205" class="dial-time-label" text-anchor="start">03:00</text>
+          <text id="time-lbl-6" x="355" y="355" class="dial-time-label" text-anchor="middle">06:00</text>
+          <text id="time-lbl-12" x="200" y="392" class="dial-time-label" text-anchor="middle">12:00</text>
+          <text id="time-lbl-15" x="45" y="355" class="dial-time-label" text-anchor="middle">15:00</text>
+          <text id="time-lbl-18" x="18" y="205" class="dial-time-label" text-anchor="end">18:00</text>
+        </g>
 
-        <text x="200" y="125" class="symbol-icon" text-anchor="middle">☀️</text>
-        <text x="200" y="285" class="symbol-icon" text-anchor="middle">🌙</text>
+        <!-- Иконки Солнца и Луны -->
+        <text x="200" y="290" class="symbol-icon" text-anchor="middle">☀️</text>
+        <text x="200" y="140" class="symbol-icon" text-anchor="middle">🌙</text>
 
+        <!-- Контрастная стрелка текущего времени -->
         <g id="hand-group">
-          <line x1="200" y1="200" x2="200" y2="45" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
-          <polygon points="194,55 200,38 206,55" fill="#FFFFFF" />
-          <circle cx="200" cy="200" r="7" fill="#FFFFFF" />
+          <line x1="200" y1="200" x2="200" y2="35" stroke="#FFD700" stroke-width="5" stroke-linecap="round" />
+          <polygon points="192,45 200,25 208,45" fill="#FFD700" stroke="#000" stroke-width="1" />
+          <circle cx="200" cy="200" r="8" fill="#FFD700" stroke="#000" stroke-width="2" />
         </g>
       </svg>
     </div>
@@ -72,7 +83,7 @@
       <p id="current-dosha-desc">Загрузка координат...</p>
     </div>
 
-    <!-- Таблица 1: Солнечные события -->
+    <!-- Таблица 1: Солнечные и астрономические данные -->
     <div class="table-card">
       <h3>Астрономические данные</h3>
       <table class="data-table">
@@ -80,6 +91,7 @@
           <tr><td>🌅 Восход:</td><td id="time-sunrise" class="val">--:--</td></tr>
           <tr><td>☀️ Солнечный полдень:</td><td id="time-noon" class="val">--:--</td></tr>
           <tr><td>🌇 Закат:</td><td id="time-sunset" class="val">--:--</td></tr>
+          <tr><td>🌌 Астрономическая полночь:</td><td id="time-midnight" class="val">--:--</td></tr>
           <tr><td>⏳ Долгота дня:</td><td id="time-daylength" class="val">-- ч -- мин</td></tr>
           <tr><td>🧘‍♂️ Брахма-мухурта:</td><td id="time-brahma" class="val">--:-- - --:--</td></tr>
         </tbody>

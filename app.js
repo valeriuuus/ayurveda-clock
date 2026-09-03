@@ -9,7 +9,7 @@ let currentCoords = null;
 document.addEventListener('DOMContentLoaded', () => {
   initLocationControls();
   tryAutoLocation();
-  setInterval(updateClock, 30000); // Обновление каждые 30 секунд
+  setInterval(updateClock, 30000);
   registerServiceWorker();
 });
 
@@ -103,9 +103,7 @@ function updateClock() {
   
   let sunrise = times.sunrise;
   let sunset = times.sunset;
-
-  document.getElementById('time-sunrise').textContent = formatTime(sunrise);
-  document.getElementById('time-sunset').textContent = formatTime(sunset);
+  let solarNoon = times.solarNoon;
 
   let dayDuration = sunset - sunrise;
   let nightDuration = (24 * 3600 * 1000) - dayDuration;
@@ -114,25 +112,47 @@ function updateClock() {
     const yesterday = new Date(now.getTime() - 24 * 3600 * 1000);
     const prevTimes = SunCalc.getTimes(yesterday, currentCoords.lat, currentCoords.lng);
     sunset = prevTimes.sunset;
+    solarNoon = prevTimes.solarNoon;
     dayDuration = prevTimes.sunset - prevTimes.sunrise;
     nightDuration = sunrise - sunset;
   }
 
+  // Брахма-мухурта (48 минут за 1 час 36 минут до восхода)
+  const brahmaStart = new Date(sunrise.getTime() - (96 * 60 * 1000));
+  const brahmaEnd = new Date(sunrise.getTime() - (48 * 60 * 1000));
+
+  // Заполнение Таблицы 1
+  document.getElementById('time-sunrise').textContent = formatTime(sunrise);
+  document.getElementById('time-noon').textContent = formatTime(solarNoon);
+  document.getElementById('time-sunset').textContent = formatTime(sunset);
+  
+  const dayHrs = Math.floor(dayDuration / (3600 * 1000));
+  const dayMins = Math.round((dayDuration % (3600 * 1000)) / (60 * 1000));
+  document.getElementById('time-daylength').textContent = `${dayHrs} ч ${dayMins} мин`;
+  document.getElementById('time-brahma').textContent = `${formatTime(brahmaStart)} - ${formatTime(brahmaEnd)}`;
+
+  // Расчет 6 интервалов
   const dayThird = dayDuration / 3;
   const nightThird = nightDuration / 3;
 
   const intervals = [
-    { name: 'KAPHA', start: sunrise, end: new Date(sunrise.getTime() + dayThird), isDay: true },
-    { name: 'PITTA', start: new Date(sunrise.getTime() + dayThird), end: new Date(sunrise.getTime() + 2 * dayThird), isDay: true },
-    { name: 'VATA', start: new Date(sunrise.getTime() + 2 * dayThird), end: sunset, isDay: true },
-    { name: 'KAPHA', start: sunset, end: new Date(sunset.getTime() + nightThird), isDay: false },
-    { name: 'PITTA', start: new Date(sunset.getTime() + nightThird), end: new Date(sunset.getTime() + 2 * nightThird), isDay: false },
-    { name: 'VATA', start: new Date(sunset.getTime() + 2 * nightThird), end: new Date(sunset.getTime() + 3 * nightThird), isDay: false }
+    { phase: "Раннее утро", name: 'KAPHA', start: sunrise, end: new Date(sunrise.getTime() + dayThird), isDay: true },
+    { phase: "Середина дня", name: 'PITTA', start: new Date(sunrise.getTime() + dayThird), end: new Date(sunrise.getTime() + 2 * dayThird), isDay: true },
+    { phase: "Вторая половина дня", name: 'VATA', start: new Date(sunrise.getTime() + 2 * dayThird), end: sunset, isDay: true },
+    { phase: "Вечер", name: 'KAPHA', start: sunset, end: new Date(sunset.getTime() + nightThird), isDay: false },
+    { phase: "Глубокая ночь", name: 'PITTA', start: new Date(sunset.getTime() + nightThird), end: new Date(sunset.getTime() + 2 * nightThird), isDay: false },
+    { phase: "Предрассветные часы", name: 'VATA', start: new Date(sunset.getTime() + 2 * nightThird), end: new Date(sunset.getTime() + 3 * nightThird), isDay: false }
   ];
+
+  // Динамические метки времени на циферблате
+  document.getElementById('label-top').textContent = `${formatTime(sunrise)}`;
+  document.getElementById('label-right').textContent = `${formatTime(solarNoon)}`;
+  document.getElementById('label-bottom').textContent = `${formatTime(sunset)}`;
+  document.getElementById('label-left').textContent = `Полночь`;
 
   drawClockSectorsAndLabels(intervals);
 
-  // Расчет поворота стрелки относительно текущего времени
+  // Определение угла стрелки
   let currentAngle = 0;
   if (now >= sunrise && now < sunset) {
     const progress = (now - sunrise) / dayDuration;
@@ -149,12 +169,29 @@ function updateClock() {
 
   document.getElementById('hand-group').setAttribute('transform', `rotate(${currentAngle}, 200, 200)`);
 
-  // Определение активной Доши
+  // Отрисовка Таблицы 2 и подсветка текущей фазы
   let activeDosha = null;
+  const tableBody = document.getElementById('dosha-schedule-body');
+  tableBody.innerHTML = '';
+
   intervals.forEach(item => {
-    if (now >= item.start && now < item.end) {
-      activeDosha = DOSHA_CONFIG[item.name];
-    }
+    const isActive = (now >= item.start && now < item.end);
+    if (isActive) activeDosha = DOSHA_CONFIG[item.name];
+
+    const durMs = item.end - item.start;
+    const hrs = Math.floor(durMs / (3600 * 1000));
+    const mins = Math.round((durMs % (3600 * 1000)) / (60 * 1000));
+
+    const tr = document.createElement('tr');
+    if (isActive) tr.className = 'row-active';
+
+    tr.innerHTML = `
+      <td>${item.phase} ${isActive ? '👈' : ''}</td>
+      <td><span class="tag-dosha ${DOSHA_CONFIG[item.name].class}">${DOSHA_CONFIG[item.name].name}</span></td>
+      <td>${formatTime(item.start)} - ${formatTime(item.end)}</td>
+      <td>${hrs}ч ${mins}м</td>
+    `;
+    tableBody.appendChild(tr);
   });
 
   if (activeDosha) {
@@ -180,7 +217,6 @@ function drawClockSectorsAndLabels(intervals) {
     const midAngle = startAngle + 30;
     const config = DOSHA_CONFIG[interval.name];
 
-    // Рисуем дугу сектора
     const pathData = describeArc(cx, cy, rArc, startAngle, endAngle);
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
@@ -190,7 +226,6 @@ function drawClockSectorsAndLabels(intervals) {
     path.setAttribute("opacity", interval.isDay ? "0.9" : "0.55");
     sectorsGroup.appendChild(path);
 
-    // Добавляем текстовую метку (Vata, Kapha, Pitta)
     const pos = polarToCartesian(cx, cy, rText, midAngle);
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     text.setAttribute("x", pos.x);

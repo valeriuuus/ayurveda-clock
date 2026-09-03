@@ -30,18 +30,18 @@
         <!-- Секторы Дош -->
         <g id="sectors-group"></g>
 
-        <!-- Текстовые метки Дош на английском (Vata, Kapha, Pitta) -->
+        <!-- Текстовые метки Дош -->
         <g id="dosha-labels-group"></g>
 
         <!-- Разделительные линии и кольца -->
         <circle cx="200" cy="200" r="185" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
         <circle cx="200" cy="200" r="105" fill="#12121e" stroke="rgba(255,255,255,0.1)" stroke-width="2" />
 
-        <!-- Метки времени: 12:00, 18:00, 24:00, 6:00 -->
-        <text x="200" y="32" class="time-label" text-anchor="middle">12:00</text>
-        <text x="375" y="205" class="time-label" text-anchor="start">18:00</text>
-        <text x="200" y="388" class="time-label" text-anchor="middle">24:00</text>
-        <text x="25" y="205" class="time-label" text-anchor="end">6:00</text>
+        <!-- Динамические метки ключевых точек дня -->
+        <text id="label-top" x="200" y="30" class="time-label" text-anchor="middle">Восход</text>
+        <text id="label-right" x="375" y="205" class="time-label" text-anchor="start">Полдень</text>
+        <text id="label-bottom" x="200" y="388" class="time-label" text-anchor="middle">Закат</text>
+        <text id="label-left" x="25" y="205" class="time-label" text-anchor="end">Полночь</text>
 
         <!-- Иконки Солнца и Луны -->
         <text x="200" y="125" class="symbol-icon" text-anchor="middle">☀️</text>
@@ -61,10 +61,38 @@
       <div id="current-dosha-badge" class="badge">--</div>
       <h2 id="current-dosha-title">Определение...</h2>
       <p id="current-dosha-desc">Загрузка координат...</p>
-      <div class="sun-times">
-        <span>🌅 Восход: <strong id="time-sunrise">--:--</strong></span>
-        <span>🌇 Закат: <strong id="time-sunset">--:--</strong></span>
-      </div>
+    </div>
+
+    <!-- Таблица 1: Солнечные события локации -->
+    <div class="table-card">
+      <h3>Астрономические данные</h3>
+      <table class="data-table">
+        <tbody>
+          <tr><td>🌅 Восход:</td><td id="time-sunrise" class="val">--:--</td></tr>
+          <tr><td>☀️ Солнечный полдень:</td><td id="time-noon" class="val">--:--</td></tr>
+          <tr><td>🌇 Закат:</td><td id="time-sunset" class="val">--:--</td></tr>
+          <tr><td>⏳ Долгота дня:</td><td id="time-daylength" class="val">-- ч -- мин</td></tr>
+          <tr><td>🧘‍♂️ Брахма-мухурта:</td><td id="time-brahma" class="val">--:-- - --:--</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Таблица 2: График периодов дош -->
+    <div class="table-card">
+      <h3>Расписание Дош на сегодня</h3>
+      <table class="data-table dosha-schedule-table">
+        <thead>
+          <tr>
+            <th>Фаза</th>
+            <th>Доша</th>
+            <th>Время</th>
+            <th>Длит.</th>
+          </tr>
+        </thead>
+        <tbody id="dosha-schedule-body">
+          <!-- Строки генерируются динамически через JS -->
+        </tbody>
+      </table>
     </div>
   </div>
 

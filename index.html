@@ -6,7 +6,7 @@
   <title>Аюрведические Часы</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#f7f9fa" />
+  <meta name="theme-color" content="#f4f6f8" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 </head>
 <body>
@@ -42,11 +42,17 @@
         <!-- Секторы Дош -->
         <g id="sectors-group"></g>
 
-        <!-- Радиальные черточки разметки времени -->
+        <!-- Радиальные черточки разметки времени между дошами -->
         <g id="ticks-group"></g>
 
-        <!-- Внутреннее полукольцо солнечного/ночного периода -->
+        <!-- Внутреннее полукольцо солнечного периода -->
         <path id="inner-day-arc" fill="none" stroke="#d4af37" stroke-width="6" stroke-linecap="round" />
+
+        <!-- Индикатор текущего времени НА кольце (темная полоска с кружком) -->
+        <g id="current-time-marker">
+          <line id="time-marker-line" x1="200" y1="200" x2="200" y2="200" stroke="#111111" stroke-width="4" stroke-linecap="round" />
+          <circle id="time-marker-dot" cx="200" cy="200" r="5" fill="#ffffff" stroke="#111111" stroke-width="3" />
+        </g>
 
         <!-- Метки времени вокруг циферблата (0, 3, 6, 9, 12, 15, 18, 21) -->
         <g id="dial-time-labels">
@@ -63,12 +69,6 @@
         <!-- Текст по центру циферблата: Время и Город -->
         <text id="clock-center-time" x="200" y="195" class="center-time-text" text-anchor="middle">00:00</text>
         <text id="clock-center-city" x="200" y="218" class="center-city-text" text-anchor="middle">ГОРОД</text>
-
-        <!-- Четкая тонкая стрелка с точкой -->
-        <g id="hand-group">
-          <line x1="200" y1="200" x2="200" y2="70" stroke="#111111" stroke-width="3" stroke-linecap="round" />
-          <circle cx="200" cy="70" r="5" fill="#111111" />
-        </g>
       </svg>
     </div>
 

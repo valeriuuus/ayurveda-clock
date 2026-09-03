@@ -6,8 +6,7 @@
   <title>Аюрведические Часы</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#1a1a2e" />
-  <!-- Подключаем легкую библиотеку SunCalc для расчета восхода/заката -->
+  <meta name="theme-color" content="#12121e" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 </head>
 <body>
@@ -25,33 +24,43 @@
       </div>
     </div>
 
-    <!-- Векторный SVG Циферблат -->
+    <!-- Интерактивный SVG Циферблат -->
     <div class="clock-wrapper">
       <svg id="dosha-clock" viewBox="0 0 400 400">
-        <!-- Секторы дош создаются динамически в JS -->
+        <!-- Секторы Дош -->
         <g id="sectors-group"></g>
 
-        <!-- Разделительное кольцо (День / Ночь) -->
-        <circle cx="200" cy="200" r="185" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
-        <circle cx="200" cy="200" r="85" fill="#12121e" />
+        <!-- Текстовые метки Дош на английском (Vata, Kapha, Pitta) -->
+        <g id="dosha-labels-group"></g>
 
-        <!-- Иконка Солнца и Луны -->
-        <text x="200" y="45" class="symbol-icon" text-anchor="middle">☀️</text>
-        <text x="200" y="365" class="symbol-icon" text-anchor="middle">🌙</text>
+        <!-- Разделительные линии и кольца -->
+        <circle cx="200" cy="200" r="185" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+        <circle cx="200" cy="200" r="105" fill="#12121e" stroke="rgba(255,255,255,0.1)" stroke-width="2" />
 
-        <!-- Стрелка времени -->
+        <!-- Метки времени: 12:00, 18:00, 24:00, 6:00 -->
+        <text x="200" y="32" class="time-label" text-anchor="middle">12:00</text>
+        <text x="375" y="205" class="time-label" text-anchor="start">18:00</text>
+        <text x="200" y="388" class="time-label" text-anchor="middle">24:00</text>
+        <text x="25" y="205" class="time-label" text-anchor="end">6:00</text>
+
+        <!-- Иконки Солнца и Луны -->
+        <text x="200" y="125" class="symbol-icon" text-anchor="middle">☀️</text>
+        <text x="200" y="285" class="symbol-icon" text-anchor="middle">🌙</text>
+
+        <!-- Стрелка текущего времени -->
         <g id="hand-group">
-          <line x1="200" y1="200" x2="200" y2="35" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
-          <circle cx="200" cy="200" r="8" fill="#FFFFFF" />
+          <line x1="200" y1="200" x2="200" y2="45" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" />
+          <polygon points="194,55 200,38 206,55" fill="#FFFFFF" />
+          <circle cx="200" cy="200" r="7" fill="#FFFFFF" />
         </g>
       </svg>
     </div>
 
-    <!-- Информационный блок текущей доши -->
+    <!-- Карточка активного периода -->
     <div class="info-card">
       <div id="current-dosha-badge" class="badge">--</div>
       <h2 id="current-dosha-title">Определение...</h2>
-      <p id="current-dosha-desc">Пожалуйста, разрешите доступ к геопозиции или выберите город.</p>
+      <p id="current-dosha-desc">Загрузка координат...</p>
       <div class="sun-times">
         <span>🌅 Восход: <strong id="time-sunrise">--:--</strong></span>
         <span>🌇 Закат: <strong id="time-sunset">--:--</strong></span>

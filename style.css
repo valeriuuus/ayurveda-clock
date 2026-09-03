@@ -28,7 +28,6 @@ header { text-align: center; }
 header h1 { font-size: 1.6rem; color: #fff; letter-spacing: 1px; }
 header p { font-size: 0.85rem; color: #8a8a9e; margin-top: 4px; }
 
-/* Вертикальная структура элементов управления */
 .location-controls {
   width: 100%;
   display: flex;
@@ -49,7 +48,6 @@ header p { font-size: 0.85rem; color: #8a8a9e; margin-top: 4px; }
   margin-left: 2px;
 }
 
-/* Единственный универсальный стиль для всех элементов (размер, высота, отступы одинаковые) */
 .control-input {
   width: 100%;
   height: 44px;
@@ -64,16 +62,9 @@ header p { font-size: 0.85rem; color: #8a8a9e; margin-top: 4px; }
   transition: border-color 0.2s, background 0.2s;
 }
 
-.control-input:focus {
-  border-color: #5B84B1;
-}
+.control-input:focus { border-color: #5B84B1; }
+.control-input:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.control-input:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Кнопка GPS под стиль общих инпутов */
 .btn.control-input {
   background: #2a2a40;
   cursor: pointer;
@@ -84,23 +75,41 @@ header p { font-size: 0.85rem; color: #8a8a9e; margin-top: 4px; }
   justify-content: center;
 }
 
-.btn.control-input:hover {
-  background: #3a3a58;
-}
+.btn.control-input:hover { background: #3a3a58; }
 
-/* Кастомная иконка для инпута даты */
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(0.8);
   cursor: pointer;
 }
 
-.clock-wrapper { width: 100%; max-width: 360px; aspect-ratio: 1; }
+.clock-wrapper { width: 100%; max-width: 380px; aspect-ratio: 1; }
 #dosha-clock { width: 100%; height: 100%; filter: drop-shadow(0 0 15px rgba(0,0,0,0.5)); }
 
-.time-label { font-size: 11px; font-weight: bold; fill: #8a8a9e; }
-.symbol-icon { font-size: 16px; opacity: 0.8; }
-.dosha-text { font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+/* Часовые метки на циферблате */
+.dial-time-label {
+  font-size: 11px;
+  font-weight: bold;
+  fill: #6e6e8d;
+  transition: fill 0.3s, font-size 0.3s;
+}
 
+.dial-time-label.active-time {
+  fill: #FFD700;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.symbol-icon { font-size: 16px; opacity: 0.8; }
+
+.dosha-text-path {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  fill: #ffffff;
+  text-transform: uppercase;
+}
+
+/* Яркая выделенная стрелка */
 #hand-group {
   transition: transform 0.5s cubic-bezier(0.4, 2.08, 0.55, 0.44);
   transform-origin: 200px 200px;

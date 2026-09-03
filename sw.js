@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dosha-clock-v4';
+const CACHE_NAME = 'dosha-clock-v5';
 const ASSETS = [
   './',
   './index.html',

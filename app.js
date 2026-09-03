@@ -5,13 +5,34 @@ const DOSHA_CONFIG = {
 };
 
 let currentCoords = null;
+let selectedDate = new Date();
 
 document.addEventListener('DOMContentLoaded', () => {
+  initDatePicker();
   initLocationControls();
   tryAutoLocation();
   setInterval(updateClock, 30000);
   registerServiceWorker();
 });
+
+// Инициализация поля даты
+function initDatePicker() {
+  const dateInput = document.getElementById('input-date');
+  
+  // Устанавливаем сегодня по умолчанию (YYYY-MM-DD)
+  const todayStr = selectedDate.toISOString().split('T')[0];
+  dateInput.value = todayStr;
+
+  dateInput.addEventListener('change', (e) => {
+    if (e.target.value) {
+      // Сохраняем выбранную дату с сохранением текущего времени
+      const [year, month, day] = e.target.value.split('-').map(Number);
+      const now = new Date();
+      selectedDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+      updateClock();
+    }
+  });
+}
 
 function tryAutoLocation() {
   if (navigator.geolocation) {
@@ -40,28 +61,35 @@ function setLocation(lat, lng, label) {
   updateClock();
 }
 
+// Загрузка списков с поддержкой поиска (через datalist)
 function initLocationControls() {
-  const countrySelect = document.getElementById('select-country');
-  const citySelect = document.getElementById('select-city');
+  const countryInput = document.getElementById('input-country');
+  const cityInput = document.getElementById('input-city');
+  const countriesDatalist = document.getElementById('datalist-countries');
+  const citiesDatalist = document.getElementById('datalist-cities');
   const autoBtn = document.getElementById('btn-auto-location');
 
   autoBtn.addEventListener('click', tryAutoLocation);
 
+  // Загрузка списка стран
   fetch('https://countriesnow.space/api/v0.1/countries')
     .then(res => res.json())
     .then(data => {
+      countriesDatalist.innerHTML = '';
       data.data.forEach(c => {
         const opt = document.createElement('option');
         opt.value = c.country;
-        opt.textContent = c.country;
-        countrySelect.appendChild(opt);
+        countriesDatalist.appendChild(opt);
       });
     });
 
-  countrySelect.addEventListener('change', (e) => {
-    const country = e.target.value;
-    citySelect.innerHTML = '<option value="">Выбрать город...</option>';
-    citySelect.disabled = !country;
+  // При выборе страны — подгружаем список городов
+  countryInput.addEventListener('input', (e) => {
+    const country = e.target.value.trim();
+    cityInput.value = '';
+    cityInput.disabled = true;
+    citiesDatalist.innerHTML = '';
+
     if (!country) return;
 
     fetch('https://countriesnow.space/api/v0.1/countries/cities', {
@@ -71,18 +99,22 @@ function initLocationControls() {
     })
     .then(res => res.json())
     .then(data => {
-      data.data.forEach(city => {
-        const opt = document.createElement('option');
-        opt.value = city;
-        opt.textContent = city;
-        citySelect.appendChild(opt);
-      });
+      if (data.data && data.data.length > 0) {
+        citiesDatalist.innerHTML = '';
+        data.data.forEach(city => {
+          const opt = document.createElement('option');
+          opt.value = city;
+          citiesDatalist.appendChild(opt);
+        });
+        cityInput.disabled = false;
+      }
     });
   });
 
-  citySelect.addEventListener('change', (e) => {
-    const city = e.target.value;
-    const country = countrySelect.value;
+  // При выборе города — геокодинг координат
+  cityInput.addEventListener('change', (e) => {
+    const city = e.target.value.trim();
+    const country = countryInput.value.trim();
     if (!city) return;
 
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city + ',' + country)}`)
@@ -98,8 +130,9 @@ function initLocationControls() {
 function updateClock() {
   if (!currentCoords) return;
 
-  const now = new Date();
-  const times = SunCalc.getTimes(now, currentCoords.lat, currentCoords.lng);
+  // Используем выбранную пользователем дату
+  const calcDate = new Date(selectedDate);
+  const times = SunCalc.getTimes(calcDate, currentCoords.lat, currentCoords.lng);
   
   let sunrise = times.sunrise;
   let sunset = times.sunset;
@@ -108,8 +141,8 @@ function updateClock() {
   let dayDuration = sunset - sunrise;
   let nightDuration = (24 * 3600 * 1000) - dayDuration;
 
-  if (now < sunrise) {
-    const yesterday = new Date(now.getTime() - 24 * 3600 * 1000);
+  if (calcDate < sunrise) {
+    const yesterday = new Date(calcDate.getTime() - 24 * 3600 * 1000);
     const prevTimes = SunCalc.getTimes(yesterday, currentCoords.lat, currentCoords.lng);
     sunset = prevTimes.sunset;
     solarNoon = prevTimes.solarNoon;
@@ -117,11 +150,10 @@ function updateClock() {
     nightDuration = sunrise - sunset;
   }
 
-  // Брахма-мухурта (48 минут за 1 час 36 минут до восхода)
+  // Брахма-мухурта
   const brahmaStart = new Date(sunrise.getTime() - (96 * 60 * 1000));
   const brahmaEnd = new Date(sunrise.getTime() - (48 * 60 * 1000));
 
-  // Заполнение Таблицы 1
   document.getElementById('time-sunrise').textContent = formatTime(sunrise);
   document.getElementById('time-noon').textContent = formatTime(solarNoon);
   document.getElementById('time-sunset').textContent = formatTime(sunset);
@@ -144,7 +176,6 @@ function updateClock() {
     { phase: "Предрассветные часы", name: 'VATA', start: new Date(sunset.getTime() + 2 * nightThird), end: new Date(sunset.getTime() + 3 * nightThird), isDay: false }
   ];
 
-  // Динамические метки времени на циферблате
   document.getElementById('label-top').textContent = `${formatTime(sunrise)}`;
   document.getElementById('label-right').textContent = `${formatTime(solarNoon)}`;
   document.getElementById('label-bottom').textContent = `${formatTime(sunset)}`;
@@ -152,30 +183,30 @@ function updateClock() {
 
   drawClockSectorsAndLabels(intervals);
 
-  // Определение угла стрелки
+  // Угол стрелки
   let currentAngle = 0;
-  if (now >= sunrise && now < sunset) {
-    const progress = (now - sunrise) / dayDuration;
+  if (calcDate >= sunrise && calcDate < sunset) {
+    const progress = (calcDate - sunrise) / dayDuration;
     currentAngle = progress * 180;
   } else {
     let nightProgress;
-    if (now >= sunset) {
-      nightProgress = (now - sunset) / nightDuration;
+    if (calcDate >= sunset) {
+      nightProgress = (calcDate - sunset) / nightDuration;
     } else {
-      nightProgress = (now - sunset + (24 * 3600 * 1000)) / nightDuration;
+      nightProgress = (calcDate - sunset + (24 * 3600 * 1000)) / nightDuration;
     }
     currentAngle = 180 + (nightProgress * 180);
   }
 
   document.getElementById('hand-group').setAttribute('transform', `rotate(${currentAngle}, 200, 200)`);
 
-  // Отрисовка Таблицы 2 и подсветка текущей фазы
+  // Отрисовка Таблицы 2
   let activeDosha = null;
   const tableBody = document.getElementById('dosha-schedule-body');
   tableBody.innerHTML = '';
 
   intervals.forEach(item => {
-    const isActive = (now >= item.start && now < item.end);
+    const isActive = (calcDate >= item.start && calcDate < item.end);
     if (isActive) activeDosha = DOSHA_CONFIG[item.name];
 
     const durMs = item.end - item.start;

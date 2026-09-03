@@ -107,11 +107,6 @@ header p { font-size: 0.85rem; color: #7f8c8d; margin-top: 2px; }
   text-transform: uppercase;
 }
 
-/* Стрелка часов без размытия */
-#hand-group {
-  transform-origin: 200px 200px;
-}
-
 /* Светлые карточки */
 .light-card {
   width: 100%;

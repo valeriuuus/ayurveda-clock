@@ -6,7 +6,7 @@
   <title>Аюрведические Часы</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#12121e" />
+  <meta name="theme-color" content="#f7f9fa" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 </head>
 <body>
@@ -16,6 +16,7 @@
       <p id="location-name">Определение локации...</p>
     </header>
 
+    <!-- Выбор даты и локации -->
     <div class="location-controls">
       <div class="field-group">
         <label for="input-date">📅 Выберите дату:</label>
@@ -35,63 +36,65 @@
       </div>
     </div>
 
-    <!-- Интерактивный SVG Циферблат -->
+    <!-- Светлый минималистичный циферблат -->
     <div class="clock-wrapper">
       <svg id="dosha-clock" viewBox="0 0 400 400">
-        <defs>
-          <!-- Пути для текста дош по дуге будут генерироваться в JS -->
-          <g id="text-paths-defs"></g>
-        </defs>
-
         <!-- Секторы Дош -->
         <g id="sectors-group"></g>
 
-        <!-- Текстовые метки Дош (по дуге) -->
-        <g id="dosha-labels-group"></g>
+        <!-- Радиальные черточки разметки времени -->
+        <g id="ticks-group"></g>
 
-        <!-- Разделительные кольца -->
-        <circle cx="200" cy="200" r="170" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
-        <circle cx="200" cy="200" r="110" fill="#12121e" stroke="rgba(255,255,255,0.1)" stroke-width="2" />
+        <!-- Внутреннее полукольцо солнечного/ночного периода -->
+        <path id="inner-day-arc" fill="none" stroke="#d4af37" stroke-width="6" stroke-linecap="round" />
 
-        <!-- Метки времени вокруг циферблата (24, 3, 6, 12, 15, 18) -->
+        <!-- Метки времени вокруг циферблата (0, 3, 6, 9, 12, 15, 18, 21) -->
         <g id="dial-time-labels">
-          <text id="time-lbl-24" x="200" y="22" class="dial-time-label" text-anchor="middle">24:00</text>
-          <text id="time-lbl-3" x="382" y="205" class="dial-time-label" text-anchor="start">03:00</text>
-          <text id="time-lbl-6" x="355" y="355" class="dial-time-label" text-anchor="middle">06:00</text>
-          <text id="time-lbl-12" x="200" y="392" class="dial-time-label" text-anchor="middle">12:00</text>
-          <text id="time-lbl-15" x="45" y="355" class="dial-time-label" text-anchor="middle">15:00</text>
-          <text id="time-lbl-18" x="18" y="205" class="dial-time-label" text-anchor="end">18:00</text>
+          <text id="time-lbl-0" x="200" y="24" class="dial-time-label" text-anchor="middle">0</text>
+          <text id="time-lbl-3" x="325" y="75" class="dial-time-label" text-anchor="middle">3</text>
+          <text id="time-lbl-6" x="378" y="204" class="dial-time-label" text-anchor="start">6</text>
+          <text id="time-lbl-9" x="325" y="333" class="dial-time-label" text-anchor="middle">9</text>
+          <text id="time-lbl-12" x="200" y="388" class="dial-time-label" text-anchor="middle">12</text>
+          <text id="time-lbl-15" x="75" y="333" class="dial-time-label" text-anchor="middle">15</text>
+          <text id="time-lbl-18" x="22" y="204" class="dial-time-label" text-anchor="end">18</text>
+          <text id="time-lbl-21" x="75" y="75" class="dial-time-label" text-anchor="middle">21</text>
         </g>
 
-        <!-- Иконки Солнца и Луны -->
-        <text x="200" y="290" class="symbol-icon" text-anchor="middle">☀️</text>
-        <text x="200" y="140" class="symbol-icon" text-anchor="middle">🌙</text>
+        <!-- Текст по центру циферблата: Время и Город -->
+        <text id="clock-center-time" x="200" y="195" class="center-time-text" text-anchor="middle">00:00</text>
+        <text id="clock-center-city" x="200" y="218" class="center-city-text" text-anchor="middle">ГОРОД</text>
 
-        <!-- Контрастная стрелка текущего времени -->
+        <!-- Четкая тонкая стрелка с точкой -->
         <g id="hand-group">
-          <line x1="200" y1="200" x2="200" y2="35" stroke="#FFD700" stroke-width="5" stroke-linecap="round" />
-          <polygon points="192,45 200,25 208,45" fill="#FFD700" stroke="#000" stroke-width="1" />
-          <circle cx="200" cy="200" r="8" fill="#FFD700" stroke="#000" stroke-width="2" />
+          <line x1="200" y1="200" x2="200" y2="70" stroke="#111111" stroke-width="3" stroke-linecap="round" />
+          <circle cx="200" cy="70" r="5" fill="#111111" />
         </g>
       </svg>
     </div>
 
-    <!-- Карточка активного периода -->
-    <div class="info-card">
-      <div id="current-dosha-badge" class="badge">--</div>
-      <h2 id="current-dosha-title">Определение...</h2>
-      <p id="current-dosha-desc">Загрузка координат...</p>
+    <!-- Карточка активного периода с обратным отсчетом -->
+    <div class="info-card light-card">
+      <div class="sub-title">СЕЙЧАС</div>
+      <h2 id="current-dosha-title" class="dosha-heading">--</h2>
+      <div id="current-dosha-meta" class="dosha-meta">-- · --:-- — --:-- · -- ч -- м</div>
+      
+      <div class="progress-bar-wrapper">
+        <div id="dosha-progress-bar" class="progress-bar"></div>
+      </div>
+
+      <div id="next-dosha-label" class="next-label">ДО ПЕРЕХОДА В --</div>
+      <div id="countdown-timer" class="countdown-value">0:00:00</div>
     </div>
 
-    <!-- Таблица 1: Солнечные и астрономические данные -->
-    <div class="table-card">
+    <!-- Таблица 1: Астрономические данные -->
+    <div class="table-card light-card">
       <h3>Астрономические данные</h3>
       <table class="data-table">
         <tbody>
           <tr><td>🌅 Восход:</td><td id="time-sunrise" class="val">--:--</td></tr>
           <tr><td>☀️ Солнечный полдень:</td><td id="time-noon" class="val">--:--</td></tr>
           <tr><td>🌇 Закат:</td><td id="time-sunset" class="val">--:--</td></tr>
-          <tr><td>🌌 Астрономическая полночь:</td><td id="time-midnight" class="val">--:--</td></tr>
+          <tr><td>🌌 Полночь:</td><td id="time-midnight" class="val">--:--</td></tr>
           <tr><td>⏳ Долгота дня:</td><td id="time-daylength" class="val">-- ч -- мин</td></tr>
           <tr><td>🧘‍♂️ Брахма-мухурта:</td><td id="time-brahma" class="val">--:-- - --:--</td></tr>
         </tbody>
@@ -99,8 +102,8 @@
     </div>
 
     <!-- Таблица 2: График периодов дош -->
-    <div class="table-card">
-      <h3>Расписание Дош на выбранный день</h3>
+    <div class="table-card light-card">
+      <h3>Расписание Дош на день</h3>
       <table class="data-table dosha-schedule-table">
         <thead>
           <tr>

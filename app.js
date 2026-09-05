@@ -20,7 +20,7 @@ const TRANSLATIONS = {
     thDosha: "Доша",
     thTime: "Время",
     thDuration: "Длит.",
-    untilTransition: "ДО ПЕРЕХОДА В",
+    untilTransition: "ДО ПЕРЕХОДУ В",
     unitH: "ч",
     unitM: "мин",
     doshas: { KAPHA: "Kapha", PITTA: "Pitta", VATA: "Vata" },
@@ -117,7 +117,7 @@ const DOSHA_CONFIG = {
 };
 
 let currentCoords = null;
-let selectedDate = new Date();
+let selectedDateStr = new Date().toISOString().split('T')[0]; // ГГГГ-ММ-ДД
 let currentCityName = "VINNYTSIA";
 let currentTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -195,13 +195,11 @@ function drawDialLabels() {
 
 function initDatePicker() {
   const dateInput = document.getElementById('input-date');
-  dateInput.value = selectedDate.toISOString().split('T')[0];
+  dateInput.value = selectedDateStr;
 
   dateInput.addEventListener('change', (e) => {
     if (e.target.value) {
-      const [year, month, day] = e.target.value.split('-').map(Number);
-      const now = new Date();
-      selectedDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
+      selectedDateStr = e.target.value;
       updateClock();
     }
   });
@@ -284,10 +282,8 @@ function initLocationControls() {
           opt.value = city;
           citiesDatalist.appendChild(opt);
         });
-        cityInput.disabled = false;
-      } else {
-        cityInput.disabled = false;
       }
+      cityInput.disabled = false;
     })
     .catch(() => {
       cityInput.disabled = false;
@@ -306,35 +302,40 @@ function initLocationControls() {
           const lat = parseFloat(data[0].lat);
           const lon = parseFloat(data[0].lon);
 
-          // Получаем IANA-таймзону города по координатам (например: Africa/Algiers)
-          fetch(`https://timeapi.io/api/TimeZone/coordinate?latitude=${lat}&longitude=${lon}`)
+          // Использование надежного бесплатного API BigDataCloud для определения IANA-таймзоны
+          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
             .then(r => r.json())
-            .then(tzData => {
-              const tz = tzData.timeZone || currentTimeZone;
-              setLocation(lat, lon, city, tz);
+            .then(geoData => {
+              // Если API вернул информацию о таймзоне
+              if (geoData.localityInfo && geoData.localityInfo.informative) {
+                const tzObj = geoData.localityInfo.informative.find(i => i.description === "time zone");
+                if (tzObj && tzObj.name) {
+                  setLocation(lat, lon, city, tzObj.name);
+                  return;
+                }
+              }
+              // Запасной API
+              fetch(`https://timeapi.io/api/TimeZone/coordinate?latitude=${lat}&longitude=${lon}`)
+                .then(r => r.json())
+                .then(tzData => setLocation(lat, lon, city, tzData.timeZone || currentTimeZone))
+                .catch(() => setLocation(lat, lon, city));
             })
-            .catch(() => {
-              setLocation(lat, lon, city);
-            });
+            .catch(() => setLocation(lat, lon, city));
         }
       });
   });
 }
 
-// Получаем точное локальное время в целевой таймзоне без искажения часовых поясов
-function getZonedParts(date, timeZone) {
+// Извлекает компоненты времени (часы, минуты, секунды) целевой таймзоны
+function getZonedTimeParts(dateObj, timeZone) {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: timeZone,
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
     hour: "numeric",
     minute: "numeric",
     second: "numeric",
     hour12: false
   });
-  
-  const parts = formatter.formatToParts(date);
+  const parts = formatter.formatToParts(dateObj);
   const map = {};
   parts.forEach(p => { if (p.type !== 'literal') map[p.type] = parseInt(p.value, 10); });
   if (map.hour === 24) map.hour = 0;
@@ -346,11 +347,9 @@ function updateClock() {
 
   const nowUTC = new Date();
   
-  // Рассчитываем локальные дату и время для выбранного города
-  const targetParts = getZonedParts(nowUTC, currentTimeZone);
-  const calcDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), targetParts.hour, targetParts.minute, targetParts.second);
-
-  const startOfDay = new Date(calcDate.getFullYear(), calcDate.getMonth(), calcDate.getDate(), 0, 0, 0);
+  // Дата для расчета SunCalc
+  const [year, month, day] = selectedDateStr.split('-').map(Number);
+  const calcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)); // Полдень UTC выбраной даты
   
   const times = SunCalc.getTimes(calcDate, currentCoords.lat, currentCoords.lng);
   
@@ -365,7 +364,13 @@ function updateClock() {
   const brahmaStart = new Date(sunrise.getTime() - (96 * 60 * 1000));
   const brahmaEnd = new Date(sunrise.getTime() - (48 * 60 * 1000));
 
-  document.getElementById('clock-center-time').textContent = formatTime(calcDate);
+  // Получаем текущие часы и минуты в выбранной местности
+  const zonedNow = getZonedTimeParts(nowUTC, currentTimeZone);
+
+  // Форматируем текущие часы для центра циферблата
+  const hStr = zonedNow.hour.toString().padStart(2, '0');
+  const mStr = zonedNow.minute.toString().padStart(2, '0');
+  document.getElementById('clock-center-time').textContent = `${hStr}:${mStr}`;
 
   document.getElementById('time-sunrise').textContent = formatTime(sunrise);
   document.getElementById('time-noon').textContent = formatTime(solarNoon);
@@ -389,10 +394,19 @@ function updateClock() {
     { phase: t.phases.deepNight, name: 'PITTA', start: new Date(sunset.getTime() + nightThird), end: new Date(sunset.getTime() + 2 * nightThird), isDay: false }
   ];
 
-  drawClockSectors(intervals, startOfDay, sunrise, sunset);
+  // Сектора циферблата вычисляются по локальным часам восхода/заката
+  const sunriseParts = getZonedTimeParts(sunrise, currentTimeZone);
+  const sunsetParts = getZonedTimeParts(sunset, currentTimeZone);
 
-  const msFromStartOfDay = calcDate - startOfDay;
-  const currentAngle = (msFromStartOfDay / (24 * 3600 * 1000)) * 360;
+  const startOfDayMs = 0;
+  const sunriseMs = (sunriseParts.hour * 3600 + sunriseParts.minute * 60 + sunriseParts.second) * 1000;
+  const sunsetMs = (sunsetParts.hour * 3600 + sunsetParts.minute * 60 + sunsetParts.second) * 1000;
+
+  drawClockSectorsZoned(intervals, sunriseMs, sunsetMs);
+
+  // Угол маркера времени в интервале 0..24 часов местного времени
+  const currentLocalMs = (zonedNow.hour * 3600 + zonedNow.minute * 60 + zonedNow.second) * 1000;
+  const currentAngle = (currentLocalMs / (24 * 3600 * 1000)) * 360;
   
   const cx = 200, cy = 200;
   const rInner = 129;
@@ -413,7 +427,7 @@ function updateClock() {
 
   let activeIndex = -1;
   for (let i = 0; i < intervals.length; i++) {
-    if (calcDate >= intervals[i].start && calcDate < intervals[i].end) {
+    if (nowUTC >= intervals[i].start && nowUTC < intervals[i].end) {
       activeIndex = i;
       break;
     }
@@ -428,8 +442,8 @@ function updateClock() {
     const nextDoshaName = t.doshas[nextInterval.name];
 
     const totalMs = activeInterval.end - activeInterval.start;
-    const passedMs = calcDate - activeInterval.start;
-    const remainMs = activeInterval.end - calcDate;
+    const passedMs = nowUTC - activeInterval.start;
+    const remainMs = activeInterval.end - nowUTC;
 
     const totalHrs = Math.floor(totalMs / (3600 * 1000));
     const totalMins = Math.round((totalMs % (3600 * 1000)) / (60 * 1000));
@@ -471,7 +485,7 @@ function updateClock() {
   });
 }
 
-function drawClockSectors(intervals, startOfDay, sunrise, sunset) {
+function drawClockSectorsZoned(intervals, sunriseMs, sunsetMs) {
   const sectorsGroup = document.getElementById('sectors-group');
   const ticksGroup = document.getElementById('ticks-group');
   
@@ -481,8 +495,12 @@ function drawClockSectors(intervals, startOfDay, sunrise, sunset) {
   const cx = 200, cy = 200, rArc = 145;
 
   intervals.forEach(interval => {
-    const startMs = interval.start - startOfDay;
-    const endMs = interval.end - startOfDay;
+    const startParts = getZonedTimeParts(interval.start, currentTimeZone);
+    const endParts = getZonedTimeParts(interval.end, currentTimeZone);
+
+    const startMs = (startParts.hour * 3600 + startParts.minute * 60 + startParts.second) * 1000;
+    let endMs = (endParts.hour * 3600 + endParts.minute * 60 + endParts.second) * 1000;
+    if (endMs <= startMs) endMs += 24 * 3600 * 1000;
 
     const startAngle = (startMs / (24 * 3600 * 1000)) * 360;
     const endAngle = (endMs / (24 * 3600 * 1000)) * 360;
@@ -508,8 +526,8 @@ function drawClockSectors(intervals, startOfDay, sunrise, sunset) {
     ticksGroup.appendChild(line);
   });
 
-  const sunriseAngle = ((sunrise - startOfDay) / (24 * 3600 * 1000)) * 360;
-  const sunsetAngle = ((sunset - startOfDay) / (24 * 3600 * 1000)) * 360;
+  const sunriseAngle = (sunriseMs / (24 * 3600 * 1000)) * 360;
+  const sunsetAngle = (sunsetMs / (24 * 3600 * 1000)) * 360;
   const dayArcData = describeArc(cx, cy, 118, sunriseAngle, sunsetAngle);
   document.getElementById('inner-day-arc').setAttribute('d', dayArcData);
 }

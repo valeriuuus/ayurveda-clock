@@ -101,7 +101,6 @@ const TRANSLATIONS = {
   }
 };
 
-// Определение двухбуквенного кода языка смартфона/браузера
 function getBrowserLang() {
   const fullLang = (navigator.language || navigator.userLanguage || 'ru').toLowerCase();
   return fullLang.split('-')[0];
@@ -120,6 +119,7 @@ const DOSHA_CONFIG = {
 let currentCoords = null;
 let selectedDate = new Date();
 let currentCityName = "VINNYTSIA";
+let currentTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone; // По умолчанию таймзона устройства
 
 document.addEventListener('DOMContentLoaded', () => {
   applyStaticTranslations();
@@ -130,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(updateClock, 1000);
   registerServiceWorker();
 
-  // Если язык редкий (не ru/uk/en) — подгружаем Google Translate API
   if (!isNativeSupported) {
     loadGoogleTranslateAPI();
   }
@@ -148,7 +147,6 @@ function applyStaticTranslations() {
   });
 }
 
-// Подключение Google Translate Service API
 function loadGoogleTranslateAPI() {
   window.googleTranslateElementInit = function() {
     new google.translate.TranslateElement({
@@ -171,7 +169,6 @@ function loadGoogleTranslateAPI() {
   document.head.appendChild(script);
 }
 
-// Генерация меток от 0 до 23 часов с защитным тегом от автоперевода
 function drawDialLabels() {
   const labelsGroup = document.getElementById('dial-time-labels');
   if (!labelsGroup) return;
@@ -203,7 +200,7 @@ function initDatePicker() {
   dateInput.addEventListener('change', (e) => {
     if (e.target.value) {
       const [year, month, day] = e.target.value.split('-').map(Number);
-      const now = new Date();
+      const now = getZonedNow();
       selectedDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
       updateClock();
     }
@@ -211,9 +208,17 @@ function initDatePicker() {
 }
 
 function tryAutoLocation() {
+  // Сбрасываем поля ввода при вызове автолокации
+  document.getElementById('input-country').value = '';
+  const cityInput = document.getElementById('input-city');
+  cityInput.value = '';
+  cityInput.disabled = true;
+
+  currentTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      pos => setLocation(pos.coords.latitude, pos.coords.longitude, "VINNYTSIA"),
+      pos => setLocation(pos.coords.latitude, pos.coords.longitude, "GPS LOCATION"),
       () => fetchIPLocation()
     );
   } else {
@@ -228,9 +233,11 @@ function fetchIPLocation() {
     .catch(() => setLocation(49.23, 28.46, "VINNYTSIA"));
 }
 
-function setLocation(lat, lng, label) {
+function setLocation(lat, lng, label, timezone = null) {
   currentCoords = { lat, lng };
   currentCityName = label.split(',')[0].toUpperCase();
+  if (timezone) currentTimeZone = timezone;
+
   document.getElementById('location-name').textContent = label;
   document.getElementById('clock-center-city').textContent = currentCityName;
   updateClock();
@@ -258,9 +265,12 @@ function initLocationControls() {
   countryInput.addEventListener('input', (e) => {
     const country = e.target.value.trim();
     cityInput.value = '';
-    cityInput.disabled = true;
     citiesDatalist.innerHTML = '';
-    if (!country) return;
+
+    if (!country) {
+      cityInput.disabled = true;
+      return;
+    }
 
     fetch('https://countriesnow.space/api/v0.1/countries/cities', {
       method: 'POST',
@@ -276,7 +286,12 @@ function initLocationControls() {
           citiesDatalist.appendChild(opt);
         });
         cityInput.disabled = false;
+      } else {
+        cityInput.disabled = false; // Разрешаем ручной ввод даже если списка нет
       }
+    })
+    .catch(() => {
+      cityInput.disabled = false;
     });
   });
 
@@ -289,16 +304,35 @@ function initLocationControls() {
       .then(res => res.json())
       .then(data => {
         if (data && data.length > 0) {
-          setLocation(parseFloat(data[0].lat), parseFloat(data[0].lon), city);
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+
+          // Получаем часовой пояс по координатам через бесплатный API
+          fetch(`https://timeapi.io/api/TimeZone/coordinate?latitude=${lat}&longitude=${lon}`)
+            .then(r => r.json())
+            .then(tzData => {
+              const tz = tzData.timeZone || currentTimeZone;
+              setLocation(lat, lon, city, tz);
+            })
+            .catch(() => {
+              setLocation(lat, lon, city);
+            });
         }
       });
   });
 }
 
+// Получение текущего времени с учетом выбранного часового пояса
+function getZonedNow() {
+  const now = new Date();
+  const timeString = now.toLocaleString("en-US", { timeZone: currentTimeZone });
+  return new Date(timeString);
+}
+
 function updateClock() {
   if (!currentCoords) return;
 
-  const now = new Date();
+  const now = getZonedNow();
   const calcDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), now.getHours(), now.getMinutes(), now.getSeconds());
   const startOfDay = new Date(calcDate.getFullYear(), calcDate.getMonth(), calcDate.getDate(), 0, 0, 0);
   
@@ -341,7 +375,6 @@ function updateClock() {
 
   drawClockSectors(intervals, startOfDay, sunrise, sunset);
 
-  // Маркер времени на кольце
   const msFromStartOfDay = calcDate - startOfDay;
   const currentAngle = (msFromStartOfDay / (24 * 3600 * 1000)) * 360;
   
@@ -480,9 +513,10 @@ function describeArc(x, y, radius, startAngle, endAngle) {
   return ["M", start.x, start.y, "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y].join(" ");
 }
 
+// Форматирование времени с учетом выбранной таймзоны
 function formatTime(date) {
   if (!date || isNaN(date)) return "--:--";
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: currentTimeZone });
 }
 
 function formatCountdown(ms) {

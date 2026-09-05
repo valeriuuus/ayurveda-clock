@@ -1,4 +1,4 @@
-// --- Словари локализации ---
+// --- Встроенные словари (для мгновенной загрузки) ---
 const TRANSLATIONS = {
   ru: {
     appTitle: "Аюрведические Часы",
@@ -14,7 +14,7 @@ const TRANSLATIONS = {
     lblSunset: "🌇 Закат:",
     lblMidnight: "🌌 Полночь:",
     lblDayLength: "⏳ Долгота дня:",
-    lblBrahma: "🧘‍♂️ Брахма-мухурта:",
+    lblBrahma: "🧘‍♂️ Brahma Muhurta:",
     tblScheduleTitle: "Расписание Дош на день",
     thPhase: "Фаза",
     thDosha: "Доша",
@@ -23,11 +23,7 @@ const TRANSLATIONS = {
     untilTransition: "ДО ПЕРЕХОДА В",
     unitH: "ч",
     unitM: "мин",
-    doshas: {
-      KAPHA: "Капха",
-      PITTA: "Питта",
-      VATA: "Вата"
-    },
+    doshas: { KAPHA: "Kapha", PITTA: "Pitta", VATA: "Vata" },
     phases: {
       predawn: "предрассветные часы",
       earlyMorning: "раннее утро",
@@ -51,7 +47,7 @@ const TRANSLATIONS = {
     lblSunset: "🌇 Захід сонця:",
     lblMidnight: "🌌 Північ:",
     lblDayLength: "⏳ Тривалість дня:",
-    lblBrahma: "🧘‍♂️ Брахма-мухурта:",
+    lblBrahma: "🧘‍♂️ Brahma Muhurta:",
     tblScheduleTitle: "Розклад Дош на день",
     thPhase: "Фаза",
     thDosha: "Доша",
@@ -60,11 +56,7 @@ const TRANSLATIONS = {
     untilTransition: "ДО ПЕРЕХОДУ В",
     unitH: "г",
     unitM: "хв",
-    doshas: {
-      KAPHA: "Капха",
-      PITTA: "Пітта",
-      VATA: "Вата"
-    },
+    doshas: { KAPHA: "Kapha", PITTA: "Pitta", VATA: "Vata" },
     phases: {
       predawn: "передсвітанкові години",
       earlyMorning: "ранок",
@@ -97,11 +89,7 @@ const TRANSLATIONS = {
     untilTransition: "UNTIL TRANSITION TO",
     unitH: "h",
     unitM: "m",
-    doshas: {
-      KAPHA: "Kapha",
-      PITTA: "Pitta",
-      VATA: "Vata"
-    },
+    doshas: { KAPHA: "Kapha", PITTA: "Pitta", VATA: "Vata" },
     phases: {
       predawn: "pre-dawn hours",
       earlyMorning: "early morning",
@@ -113,16 +101,15 @@ const TRANSLATIONS = {
   }
 };
 
-// Определение языка интерфейса
-function detectLanguage() {
-  const lang = (navigator.language || navigator.userLanguage || 'ru').toLowerCase();
-  if (lang.startsWith('uk')) return 'uk';
-  if (lang.startsWith('ru')) return 'ru';
-  return 'en';
+// Определение двухбуквенного кода языка смартфона/браузера
+function getBrowserLang() {
+  const fullLang = (navigator.language || navigator.userLanguage || 'ru').toLowerCase();
+  return fullLang.split('-')[0];
 }
 
-const currentLang = detectLanguage();
-const t = TRANSLATIONS[currentLang];
+const userLang = getBrowserLang();
+const isNativeSupported = ['ru', 'uk', 'en'].includes(userLang);
+const t = isNativeSupported ? TRANSLATIONS[userLang] : TRANSLATIONS['en'];
 
 const DOSHA_CONFIG = {
   KAPHA: { color: "#16a085", class: "kapha" },
@@ -132,15 +119,21 @@ const DOSHA_CONFIG = {
 
 let currentCoords = null;
 let selectedDate = new Date();
-let currentCityName = "ВИННИЦА";
+let currentCityName = "VINNYTSIA";
 
 document.addEventListener('DOMContentLoaded', () => {
   applyStaticTranslations();
+  drawDialLabels();
   initDatePicker();
   initLocationControls();
   tryAutoLocation();
   setInterval(updateClock, 1000);
   registerServiceWorker();
+
+  // Если язык редкий (не ru/uk/en) — подгружаем Google Translate API
+  if (!isNativeSupported) {
+    loadGoogleTranslateAPI();
+  }
 });
 
 function applyStaticTranslations() {
@@ -153,6 +146,54 @@ function applyStaticTranslations() {
     const key = el.getAttribute('data-i18n-ph');
     if (t[key]) el.setAttribute('placeholder', t[key]);
   });
+}
+
+// Подключение Google Translate Service API
+function loadGoogleTranslateAPI() {
+  window.googleTranslateElementInit = function() {
+    new google.translate.TranslateElement({
+      pageLanguage: 'en',
+      includedLanguages: userLang,
+      autoDisplay: false
+    }, 'google_translate_element');
+
+    setTimeout(() => {
+      const select = document.querySelector('.goog-te-combo');
+      if (select) {
+        select.value = userLang;
+        select.dispatchEvent(new Event('change'));
+      }
+    }, 500);
+  };
+
+  const script = document.createElement('script');
+  script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+  document.head.appendChild(script);
+}
+
+// Генерация меток от 0 до 23 часов с защитным тегом от автоперевода
+function drawDialLabels() {
+  const labelsGroup = document.getElementById('dial-time-labels');
+  if (!labelsGroup) return;
+  labelsGroup.innerHTML = '';
+
+  const cx = 200, cy = 200;
+  const radius = 184;
+
+  for (let hour = 0; hour < 24; hour++) {
+    const angleDeg = (hour / 24) * 360;
+    const pos = polarToCartesian(cx, cy, radius, angleDeg);
+
+    const textNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    textNode.setAttribute("x", pos.x);
+    textNode.setAttribute("y", pos.y + 4);
+    textNode.setAttribute("class", "dial-time-label notranslate");
+    textNode.setAttribute("translate", "no");
+    textNode.setAttribute("text-anchor", "middle");
+    textNode.textContent = hour;
+
+    labelsGroup.appendChild(textNode);
+  }
 }
 
 function initDatePicker() {
@@ -283,7 +324,7 @@ function updateClock() {
   
   const dayHrs = Math.floor(dayDuration / (3600 * 1000));
   const dayMins = Math.round((dayDuration % (3600 * 1000)) / (60 * 1000));
-  document.getElementById('time-daylength').textContent = `${dayHrs} ${t.unitH} ${dayMins} ${t.unitM}`;
+  document.getElementById('time-daylength').innerHTML = `<span class="notranslate" translate="no">${dayHrs}</span> ${t.unitH} <span class="notranslate" translate="no">${dayMins}</span> ${t.unitM}`;
   document.getElementById('time-brahma').textContent = `${formatTime(brahmaStart)} - ${formatTime(brahmaEnd)}`;
 
   const dayThird = dayDuration / 3;
@@ -300,7 +341,7 @@ function updateClock() {
 
   drawClockSectors(intervals, startOfDay, sunrise, sunset);
 
-  // Отрисовка полосы указателя времени
+  // Маркер времени на кольце
   const msFromStartOfDay = calcDate - startOfDay;
   const currentAngle = (msFromStartOfDay / (24 * 3600 * 1000)) * 360;
   
@@ -348,15 +389,15 @@ function updateClock() {
     titleEl.textContent = activeDoshaName;
     titleEl.style.color = activeConfig.color;
 
-    document.getElementById('current-dosha-meta').textContent = 
-      `${activeInterval.phase} · ${formatTime(activeInterval.start)} — ${formatTime(activeInterval.end)} · ${totalHrs} ${t.unitH} ${totalMins} ${t.unitM}`;
+    document.getElementById('current-dosha-meta').innerHTML = 
+      `<span>${activeInterval.phase}</span> · <span class="notranslate" translate="no">${formatTime(activeInterval.start)} — ${formatTime(activeInterval.end)}</span> · <span class="notranslate" translate="no">${totalHrs}</span> ${t.unitH} <span class="notranslate" translate="no">${totalMins}</span> ${t.unitM}`;
 
     const progressPercent = Math.min(100, Math.max(0, (passedMs / totalMs) * 100));
     const progressBar = document.getElementById('dosha-progress-bar');
     progressBar.style.width = `${progressPercent}%`;
     progressBar.style.background = activeConfig.color;
 
-    document.getElementById('next-dosha-label').textContent = `${t.untilTransition} ${nextDoshaName.toUpperCase()}`;
+    document.getElementById('next-dosha-label').innerHTML = `<span>${t.untilTransition}</span> <span class="notranslate" translate="no">${nextDoshaName.toUpperCase()}</span>`;
     document.getElementById('countdown-timer').textContent = formatCountdown(remainMs);
   }
 
@@ -373,9 +414,9 @@ function updateClock() {
 
     tr.innerHTML = `
       <td>${item.phase} ${isActive ? '👈' : ''}</td>
-      <td><span class="tag-dosha ${DOSHA_CONFIG[item.name].class}">${t.doshas[item.name]}</span></td>
-      <td>${formatTime(item.start)} - ${formatTime(item.end)}</td>
-      <td>${hrs}${t.unitH} ${mins}${t.unitM}</td>
+      <td><span class="tag-dosha ${DOSHA_CONFIG[item.name].class} notranslate" translate="no">${t.doshas[item.name]}</span></td>
+      <td class="notranslate" translate="no">${formatTime(item.start)} - ${formatTime(item.end)}</td>
+      <td><span class="notranslate" translate="no">${hrs}</span>${t.unitH} <span class="notranslate" translate="no">${mins}</span>${t.unitM}</td>
     `;
     tableBody.appendChild(tr);
   });
@@ -452,7 +493,6 @@ function formatCountdown(ms) {
   return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-// Автоматическая регистрация и сброс старого Service Worker
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').then(reg => {

@@ -119,7 +119,7 @@ const DOSHA_CONFIG = {
 let currentCoords = null;
 let selectedDate = new Date();
 let currentCityName = "VINNYTSIA";
-let currentTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone; // По умолчанию таймзона устройства
+let currentTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 document.addEventListener('DOMContentLoaded', () => {
   applyStaticTranslations();
@@ -200,7 +200,7 @@ function initDatePicker() {
   dateInput.addEventListener('change', (e) => {
     if (e.target.value) {
       const [year, month, day] = e.target.value.split('-').map(Number);
-      const now = getZonedNow();
+      const now = new Date();
       selectedDate = new Date(year, month - 1, day, now.getHours(), now.getMinutes(), now.getSeconds());
       updateClock();
     }
@@ -208,7 +208,6 @@ function initDatePicker() {
 }
 
 function tryAutoLocation() {
-  // Сбрасываем поля ввода при вызове автолокации
   document.getElementById('input-country').value = '';
   const cityInput = document.getElementById('input-city');
   cityInput.value = '';
@@ -287,7 +286,7 @@ function initLocationControls() {
         });
         cityInput.disabled = false;
       } else {
-        cityInput.disabled = false; // Разрешаем ручной ввод даже если списка нет
+        cityInput.disabled = false;
       }
     })
     .catch(() => {
@@ -307,7 +306,7 @@ function initLocationControls() {
           const lat = parseFloat(data[0].lat);
           const lon = parseFloat(data[0].lon);
 
-          // Получаем часовой пояс по координатам через бесплатный API
+          // Получаем IANA-таймзону города по координатам (например: Africa/Algiers)
           fetch(`https://timeapi.io/api/TimeZone/coordinate?latitude=${lat}&longitude=${lon}`)
             .then(r => r.json())
             .then(tzData => {
@@ -322,18 +321,35 @@ function initLocationControls() {
   });
 }
 
-// Получение текущего времени с учетом выбранного часового пояса
-function getZonedNow() {
-  const now = new Date();
-  const timeString = now.toLocaleString("en-US", { timeZone: currentTimeZone });
-  return new Date(timeString);
+// Получаем точное локальное время в целевой таймзоне без искажения часовых поясов
+function getZonedParts(date, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: timeZone,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(date);
+  const map = {};
+  parts.forEach(p => { if (p.type !== 'literal') map[p.type] = parseInt(p.value, 10); });
+  if (map.hour === 24) map.hour = 0;
+  return map;
 }
 
 function updateClock() {
   if (!currentCoords) return;
 
-  const now = getZonedNow();
-  const calcDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), now.getHours(), now.getMinutes(), now.getSeconds());
+  const nowUTC = new Date();
+  
+  // Рассчитываем локальные дату и время для выбранного города
+  const targetParts = getZonedParts(nowUTC, currentTimeZone);
+  const calcDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), targetParts.hour, targetParts.minute, targetParts.second);
+
   const startOfDay = new Date(calcDate.getFullYear(), calcDate.getMonth(), calcDate.getDate(), 0, 0, 0);
   
   const times = SunCalc.getTimes(calcDate, currentCoords.lat, currentCoords.lng);
@@ -513,7 +529,6 @@ function describeArc(x, y, radius, startAngle, endAngle) {
   return ["M", start.x, start.y, "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y].join(" ");
 }
 
-// Форматирование времени с учетом выбранной таймзоны
 function formatTime(date) {
   if (!date || isNaN(date)) return "--:--";
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: currentTimeZone });

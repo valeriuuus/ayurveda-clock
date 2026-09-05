@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Аюрведические Часы</title>
+  <title data-i18n="appTitle">Аюрведические Часы</title>
   
   <!-- Cache-Busting CSS -->
   <script>
@@ -44,36 +44,34 @@
     <!-- Циферблат -->
     <div class="clock-wrapper">
       <svg id="dosha-clock" viewBox="0 0 400 400">
+        <!-- Секторы Дош -->
         <g id="sectors-group"></g>
+
+        <!-- Радиальные черточки разметки между дошами -->
         <g id="ticks-group"></g>
 
+        <!-- Внутреннее полукольцо солнечного периода -->
         <path id="inner-day-arc" fill="none" stroke="#d4af37" stroke-width="6" stroke-linecap="round" />
 
+        <!-- Индикатор текущего времени НА кольце -->
         <g id="current-time-marker">
           <line id="time-marker-line" x1="200" y1="200" x2="200" y2="200" stroke="#111111" stroke-width="4" stroke-linecap="round" />
           <circle id="time-marker-dot" cx="200" cy="200" r="5" fill="#ffffff" stroke="#111111" stroke-width="3" />
         </g>
 
-        <g id="dial-time-labels">
-          <text id="time-lbl-0" x="200" y="24" class="dial-time-label" text-anchor="middle">0</text>
-          <text id="time-lbl-3" x="325" y="75" class="dial-time-label" text-anchor="middle">3</text>
-          <text id="time-lbl-6" x="378" y="204" class="dial-time-label" text-anchor="start">6</text>
-          <text id="time-lbl-9" x="325" y="333" class="dial-time-label" text-anchor="middle">9</text>
-          <text id="time-lbl-12" x="200" y="388" class="dial-time-label" text-anchor="middle">12</text>
-          <text id="time-lbl-15" x="75" y="333" class="dial-time-label" text-anchor="middle">15</text>
-          <text id="time-lbl-18" x="22" y="204" class="dial-time-label" text-anchor="end">18</text>
-          <text id="time-lbl-21" x="75" y="75" class="dial-time-label" text-anchor="middle">21</text>
-        </g>
+        <!-- Динамические метки времени от 0 до 23 (Защищены class="notranslate") -->
+        <g id="dial-time-labels" class="notranslate" translate="no"></g>
 
-        <text id="clock-center-time" x="200" y="195" class="center-time-text" text-anchor="middle">00:00</text>
-        <text id="clock-center-city" x="200" y="218" class="center-city-text" text-anchor="middle">ГОРОД</text>
+        <!-- Текст по центру -->
+        <text id="clock-center-time" x="200" y="195" class="center-time-text notranslate" translate="no" text-anchor="middle">00:00</text>
+        <text id="clock-center-city" x="200" y="218" class="center-city-text notranslate" translate="no" text-anchor="middle">ГОРОД</text>
       </svg>
     </div>
 
     <!-- Карточка активного периода -->
     <div class="info-card light-card">
       <div class="sub-title" data-i18n="lblNow">СЕЙЧАС</div>
-      <h2 id="current-dosha-title" class="dosha-heading">--</h2>
+      <h2 id="current-dosha-title" class="dosha-heading notranslate" translate="no">--</h2>
       <div id="current-dosha-meta" class="dosha-meta">-- · --:-- — --:-- · -- ч -- м</div>
       
       <div class="progress-bar-wrapper">
@@ -81,7 +79,7 @@
       </div>
 
       <div id="next-dosha-label" class="next-label">--</div>
-      <div id="countdown-timer" class="countdown-value">0:00:00</div>
+      <div id="countdown-timer" class="countdown-value notranslate" translate="no">0:00:00</div>
     </div>
 
     <!-- Таблица 1: Астрономические данные -->
@@ -89,12 +87,12 @@
       <h3 data-i18n="tblAstroTitle">Астрономические данные</h3>
       <table class="data-table">
         <tbody>
-          <tr><td data-i18n="lblSunrise">🌅 Восход:</td><td id="time-sunrise" class="val">--:--</td></tr>
-          <tr><td data-i18n="lblNoon">☀️ Солнечный полдень:</td><td id="time-noon" class="val">--:--</td></tr>
-          <tr><td data-i18n="lblSunset">🌇 Закат:</td><td id="time-sunset" class="val">--:--</td></tr>
-          <tr><td data-i18n="lblMidnight">🌌 Полночь:</td><td id="time-midnight" class="val">--:--</td></tr>
+          <tr><td data-i18n="lblSunrise">🌅 Восход:</td><td id="time-sunrise" class="val notranslate" translate="no">--:--</td></tr>
+          <tr><td data-i18n="lblNoon">☀️ Солнечный полдень:</td><td id="time-noon" class="val notranslate" translate="no">--:--</td></tr>
+          <tr><td data-i18n="lblSunset">🌇 Закат:</td><td id="time-sunset" class="val notranslate" translate="no">--:--</td></tr>
+          <tr><td data-i18n="lblMidnight">🌌 Полночь:</td><td id="time-midnight" class="val notranslate" translate="no">--:--</td></tr>
           <tr><td data-i18n="lblDayLength">⏳ Долгота дня:</td><td id="time-daylength" class="val">-- ч -- мин</td></tr>
-          <tr><td data-i18n="lblBrahma">🧘‍♂️ Брахма-мухурта:</td><td id="time-brahma" class="val">--:-- - --:--</td></tr>
+          <tr><td data-i18n="lblBrahma">🧘‍♂️ Брахма-мухурта:</td><td id="time-brahma" class="val notranslate" translate="no">--:-- - --:--</td></tr>
         </tbody>
       </table>
     </div>
@@ -115,6 +113,9 @@
       </table>
     </div>
   </div>
+
+  <!-- Контейнер Google Translate Widget (скрыт от глаз пользователя) -->
+  <div id="google_translate_element" style="display:none;"></div>
 
   <!-- Cache-Busting JS -->
   <script>

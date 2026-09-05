@@ -1,5 +1,4 @@
-// Менять значение версии кэша (v8, v9 и т.д.) при каждой публикации
-const CACHE_NAME = 'dosha-clock-v8'; 
+const CACHE_NAME = 'dosha-clock-v10'; 
 
 const ASSETS = [
   './',
@@ -11,7 +10,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', event => {
-  self.skipWaiting(); // Принудительная активация нового SW
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
@@ -23,7 +22,7 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cache => {
           if (cache !== CACHE_NAME) {
-            return caches.delete(cache); // Удаление всех предыдущих версий кэша
+            return caches.delete(cache);
           }
         })
       );

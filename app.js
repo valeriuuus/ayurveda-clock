@@ -1,4 +1,4 @@
-// --- Встроенные словари перевода ---
+// --- Встроенные словари (для мгновенной загрузки) ---
 const TRANSLATIONS = {
   ru: {
     appTitle: "Аюрведические Часы",
@@ -20,7 +20,7 @@ const TRANSLATIONS = {
     thDosha: "Доша",
     thTime: "Время",
     thDuration: "Длит.",
-    untilTransition: "ДО ПЕРЕХОДА В",
+    untilTransition: "ДО ПЕРЕХОДУ В",
     unitH: "ч",
     unitM: "мин",
     doshas: { KAPHA: "Kapha", PITTA: "Pitta", VATA: "Vata" },
@@ -117,7 +117,7 @@ const DOSHA_CONFIG = {
 };
 
 let currentCoords = null;
-let selectedDateStr = new Date().toISOString().split('T')[0];
+let selectedDateStr = new Date().toISOString().split('T')[0]; // ГГГГ-ММ-ДД
 let currentCityName = "VINNYTSIA";
 let currentTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -126,11 +126,13 @@ document.addEventListener('DOMContentLoaded', () => {
   drawDialLabels();
   initDatePicker();
   initLocationControls();
-  initShareButton();
-  checkIOSInstallationPrompt();
   tryAutoLocation();
   setInterval(updateClock, 1000);
   registerServiceWorker();
+
+  if (!isNativeSupported) {
+    loadGoogleTranslateAPI();
+  }
 });
 
 function applyStaticTranslations() {
@@ -143,6 +145,28 @@ function applyStaticTranslations() {
     const key = el.getAttribute('data-i18n-ph');
     if (t[key]) el.setAttribute('placeholder', t[key]);
   });
+}
+
+function loadGoogleTranslateAPI() {
+  window.googleTranslateElementInit = function() {
+    new google.translate.TranslateElement({
+      pageLanguage: 'en',
+      includedLanguages: userLang,
+      autoDisplay: false
+    }, 'google_translate_element');
+
+    setTimeout(() => {
+      const select = document.querySelector('.goog-te-combo');
+      if (select) {
+        select.value = userLang;
+        select.dispatchEvent(new Event('change'));
+      }
+    }, 500);
+  };
+
+  const script = document.createElement('script');
+  script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+  document.head.appendChild(script);
 }
 
 function drawDialLabels() {
@@ -278,9 +302,11 @@ function initLocationControls() {
           const lat = parseFloat(data[0].lat);
           const lon = parseFloat(data[0].lon);
 
+          // Использование надежного бесплатного API BigDataCloud для определения IANA-таймзоны
           fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`)
             .then(r => r.json())
             .then(geoData => {
+              // Если API вернул информацию о таймзоне
               if (geoData.localityInfo && geoData.localityInfo.informative) {
                 const tzObj = geoData.localityInfo.informative.find(i => i.description === "time zone");
                 if (tzObj && tzObj.name) {
@@ -288,6 +314,7 @@ function initLocationControls() {
                   return;
                 }
               }
+              // Запасной API
               fetch(`https://timeapi.io/api/TimeZone/coordinate?latitude=${lat}&longitude=${lon}`)
                 .then(r => r.json())
                 .then(tzData => setLocation(lat, lon, city, tzData.timeZone || currentTimeZone))
@@ -299,6 +326,7 @@ function initLocationControls() {
   });
 }
 
+// Извлекает компоненты времени (часы, минуты, секунды) целевой таймзоны
 function getZonedTimeParts(dateObj, timeZone) {
   const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone: timeZone,
@@ -318,8 +346,10 @@ function updateClock() {
   if (!currentCoords) return;
 
   const nowUTC = new Date();
+  
+  // Дата для расчета SunCalc
   const [year, month, day] = selectedDateStr.split('-').map(Number);
-  const calcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  const calcDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0)); // Полдень UTC выбраной даты
   
   const times = SunCalc.getTimes(calcDate, currentCoords.lat, currentCoords.lng);
   
@@ -334,8 +364,10 @@ function updateClock() {
   const brahmaStart = new Date(sunrise.getTime() - (96 * 60 * 1000));
   const brahmaEnd = new Date(sunrise.getTime() - (48 * 60 * 1000));
 
+  // Получаем текущие часы и минуты в выбранной местности
   const zonedNow = getZonedTimeParts(nowUTC, currentTimeZone);
 
+  // Форматируем текущие часы для центра циферблата
   const hStr = zonedNow.hour.toString().padStart(2, '0');
   const mStr = zonedNow.minute.toString().padStart(2, '0');
   document.getElementById('clock-center-time').textContent = `${hStr}:${mStr}`;
@@ -362,14 +394,17 @@ function updateClock() {
     { phase: t.phases.deepNight, name: 'PITTA', start: new Date(sunset.getTime() + nightThird), end: new Date(sunset.getTime() + 2 * nightThird), isDay: false }
   ];
 
+  // Сектора циферблата вычисляются по локальным часам восхода/заката
   const sunriseParts = getZonedTimeParts(sunrise, currentTimeZone);
   const sunsetParts = getZonedTimeParts(sunset, currentTimeZone);
 
+  const startOfDayMs = 0;
   const sunriseMs = (sunriseParts.hour * 3600 + sunriseParts.minute * 60 + sunriseParts.second) * 1000;
   const sunsetMs = (sunsetParts.hour * 3600 + sunsetParts.minute * 60 + sunsetParts.second) * 1000;
 
   drawClockSectorsZoned(intervals, sunriseMs, sunsetMs);
 
+  // Угол маркера времени в интервале 0..24 часов местного времени
   const currentLocalMs = (zonedNow.hour * 3600 + zonedNow.minute * 60 + zonedNow.second) * 1000;
   const currentAngle = (currentLocalMs / (24 * 3600 * 1000)) * 360;
   
@@ -523,55 +558,6 @@ function formatCountdown(ms) {
   const minutes = Math.floor((ms / (1000 * 60)) % 60);
   const hours = Math.floor(ms / (1000 * 60 * 60));
   return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
-
-function initShareButton() {
-  const shareBtn = document.getElementById('btn-share');
-  if (!shareBtn) return;
-
-  shareBtn.addEventListener('click', async () => {
-    const shareData = {
-      title: document.title || 'Аюрведические Часы',
-      text: 'Аюрведические часы и биоритмы дош онлайн',
-      url: window.location.href
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (err) {
-        if (err.name !== 'AbortError') console.error('Ошибка sharing:', err);
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        alert('Ссылка скопирована в буфер обмена!');
-      } catch (err) {
-        alert('Ссылка: ' + window.location.href);
-      }
-    }
-  });
-}
-
-function checkIOSInstallationPrompt() {
-  const userAgent = window.navigator.userAgent.toLowerCase();
-  const isIos = /iphone|ipad|ipod/.test(userAgent);
-  const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-  const bannerDismissed = localStorage.getItem('iosBannerDismissed');
-
-  if (isIos && !isStandalone && !bannerDismissed) {
-    const banner = document.getElementById('ios-install-banner');
-    const closeBtn = document.getElementById('btn-close-ios-banner');
-
-    if (banner) banner.style.display = 'flex';
-
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => {
-        banner.style.display = 'none';
-        localStorage.setItem('iosBannerDismissed', 'true');
-      });
-    }
-  }
 }
 
 function registerServiceWorker() {

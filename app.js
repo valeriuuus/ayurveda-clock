@@ -131,10 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
   tryAutoLocation();
   setInterval(updateClock, 1000);
   registerServiceWorker();
-
-  if (!isNativeSupported) {
-    loadGoogleTranslateAPI();
-  }
 });
 
 function applyStaticTranslations() {
@@ -147,28 +143,6 @@ function applyStaticTranslations() {
     const key = el.getAttribute('data-i18n-ph');
     if (t[key]) el.setAttribute('placeholder', t[key]);
   });
-}
-
-function loadGoogleTranslateAPI() {
-  window.googleTranslateElementInit = function() {
-    new google.translate.TranslateElement({
-      pageLanguage: 'en',
-      includedLanguages: userLang,
-      autoDisplay: false
-    }, 'google_translate_element');
-
-    setTimeout(() => {
-      const select = document.querySelector('.goog-te-combo');
-      if (select) {
-        select.value = userLang;
-        select.dispatchEvent(new Event('change'));
-      }
-    }, 500);
-  };
-
-  const script = document.createElement('script');
-  script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-  document.head.appendChild(script);
 }
 
 function drawDialLabels() {

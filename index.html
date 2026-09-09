@@ -1,143 +1,125 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Аюрведические Часы</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="appTitle">Аюрведические Часы</title>
   
-  <!-- PWA & iOS Метатеги -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Аюр-Часы">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <meta name="theme-color" content="#121212">
-
-  <link rel="stylesheet" href="style.css">
+  <!-- Cache-Busting CSS -->
+  <script>
+    document.write('<link rel="stylesheet" href="style.css?v=' + Date.now() + '" />');
+  </script>
+  
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#f4f6f8" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 </head>
 <body>
-
-  <div class="app-container">
-    <header class="app-header">
+  <div class="container">
+    <header>
       <h1 data-i18n="appTitle">Аюрведические Часы</h1>
-      <button id="btn-share" class="icon-btn" title="Поделиться" aria-label="Поделиться">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="18" cy="5" r="3"></circle>
-          <circle cx="6" cy="12" r="3"></circle>
-          <circle cx="18" cy="19" r="3"></circle>
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-        </svg>
-      </button>
+      <p id="location-name" data-i18n="locDetecting">Определение локации...</p>
     </header>
 
-    <!-- Баннер-подсказка для iOS Safari -->
-    <div id="ios-install-banner" class="ios-banner" style="display: none;">
-      <span>Чтобы установить на iPhone: нажмите <strong>«Поделиться»</strong> <svg width="14" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg> и выберите <strong>«На экран "Домой"»</strong>.</span>
-      <button id="btn-close-ios-banner">✕</button>
-    </div>
-
-    <!-- Управление локацией и датой -->
-    <div class="controls-panel">
-      <div class="control-group">
+    <!-- Выбор даты и локации -->
+    <div class="location-controls">
+      <div class="field-group">
         <label for="input-date" data-i18n="lblSelectDate">📅 Выберите дату:</label>
-        <input type="date" id="input-date">
-      </div>
-      
-      <div class="control-group">
-        <button id="btn-auto-location" class="btn-primary" data-i18n="btnAutoLoc">📍 Автовыбор (GPS)</button>
+        <input type="date" id="input-date" class="control-input" />
       </div>
 
-      <div class="control-group location-inputs">
-        <input type="text" id="input-country" list="datalist-countries" data-i18n-ph="phCountry" placeholder="🔍 Введите или выберите страну...">
+      <button id="btn-auto-location" class="btn control-input" data-i18n="btnAutoLoc">📍 Автовыбор (GPS)</button>
+
+      <div class="field-group">
+        <input type="text" id="input-country" class="control-input" list="datalist-countries" data-i18n-ph="phCountry" placeholder="🔍 Введите или выберите страну..." />
         <datalist id="datalist-countries"></datalist>
+      </div>
 
-        <input type="text" id="input-city" list="datalist-cities" data-i18n-ph="phCity" placeholder="🔍 Введите или выберите город..." disabled>
+      <div class="field-group">
+        <input type="text" id="input-city" class="control-input" list="datalist-cities" data-i18n-ph="phCity" placeholder="🔍 Введите или выберите город..." disabled />
         <datalist id="datalist-cities"></datalist>
       </div>
     </div>
 
-    <!-- Информационная плашка локации -->
-    <div class="location-badge">
-      <span id="location-name">Определение локации...</span>
-    </div>
-
-    <!-- Интерактивный циферблат -->
+    <!-- Циферблат -->
     <div class="clock-wrapper">
-      <svg id="ayurvedic-clock" viewBox="0 0 400 400">
-        <!-- Циферблат -->
-        <circle cx="200" cy="200" r="185" class="dial-bg"></circle>
-        
-        <!-- Метки часов 0-23 -->
-        <g id="dial-time-labels"></g>
-        
-        <!-- Сектора фаз и дош -->
+      <svg id="dosha-clock" viewBox="0 0 400 400">
+        <!-- Секторы Дош -->
         <g id="sectors-group"></g>
+
+        <!-- Радиальные черточки разметки между дошами -->
         <g id="ticks-group"></g>
-        
-        <!-- Внутренняя дуга дня -->
-        <path id="inner-day-arc" fill="none" stroke="#f1c40f" stroke-width="3" opacity="0.4"></path>
 
-        <!-- Центр с показанием времени -->
-        <circle cx="200" cy="200" r="105" class="center-circle"></circle>
-        
-        <text x="200" y="165" class="center-label-now" data-i18n="lblNow">СЕЙЧАС</text>
-        <text x="200" y="200" id="clock-center-time" class="center-time notranslate" translate="no">--:--</text>
-        <text x="200" y="225" id="clock-center-city" class="center-city notranslate" translate="no">LOCATION</text>
+        <!-- Внутреннее полукольцо солнечного периода -->
+        <path id="inner-day-arc" fill="none" stroke="#d4af37" stroke-width="6" stroke-linecap="round" />
 
-        <!-- Стрелка/Маркер текущего времени -->
-        <line id="time-marker-line" x1="200" y1="200" x2="200" y2="40" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="4 2"></line>
-        <circle id="time-marker-dot" cx="200" cy="40" r="6" fill="#ffffff" stroke="#121212" stroke-width="2"></circle>
+        <!-- Индикатор текущего времени НА кольце -->
+        <g id="current-time-marker">
+          <line id="time-marker-line" x1="200" y1="200" x2="200" y2="200" stroke="#111111" stroke-width="4" stroke-linecap="round" />
+          <circle id="time-marker-dot" cx="200" cy="200" r="5" fill="#ffffff" stroke="#111111" stroke-width="3" />
+        </g>
+
+        <!-- Динамические метки времени от 0 до 23 (Защищены class="notranslate") -->
+        <g id="dial-time-labels" class="notranslate" translate="no"></g>
+
+        <!-- Текст по центру -->
+        <text id="clock-center-time" x="200" y="195" class="center-time-text notranslate" translate="no" text-anchor="middle">00:00</text>
+        <text id="clock-center-city" x="200" y="218" class="center-city-text notranslate" translate="no" text-anchor="middle">ГОРОД</text>
       </svg>
     </div>
 
-    <!-- Карточка текущей фазы и таймер -->
-    <div class="current-dosha-card">
-      <div id="current-dosha-title" class="dosha-title notranslate" translate="no">--</div>
-      <div id="current-dosha-meta" class="dosha-meta">--</div>
+    <!-- Карточка активного периода -->
+    <div class="info-card light-card">
+      <div class="sub-title" data-i18n="lblNow">СЕЙЧАС</div>
+      <h2 id="current-dosha-title" class="dosha-heading notranslate" translate="no">--</h2>
+      <div id="current-dosha-meta" class="dosha-meta">-- · --:-- — --:-- · -- ч -- м</div>
+      
       <div class="progress-bar-wrapper">
         <div id="dosha-progress-bar" class="progress-bar"></div>
       </div>
-      <div class="transition-info">
-        <span id="next-dosha-label">ДО ПЕРЕХОДА В</span>
-        <span id="countdown-timer" class="countdown notranslate" translate="no">0:00:00</span>
-      </div>
+
+      <div id="next-dosha-label" class="next-label">--</div>
+      <div id="countdown-timer" class="countdown-value notranslate" translate="no">0:00:00</div>
     </div>
 
-    <!-- Астрономическая сводка -->
-    <div class="data-section">
+    <!-- Таблица 1: Астрономические данные -->
+    <div class="table-card light-card">
       <h3 data-i18n="tblAstroTitle">Астрономические данные</h3>
-      <div class="astro-grid">
-        <div class="astro-item"><span data-i18n="lblSunrise">🌅 Восход:</span> <strong id="time-sunrise" class="notranslate" translate="no">--:--</strong></div>
-        <div class="astro-item"><span data-i18n="lblNoon">☀️ Полдень:</span> <strong id="time-noon" class="notranslate" translate="no">--:--</strong></div>
-        <div class="astro-item"><span data-i18n="lblSunset">🌇 Закат:</span> <strong id="time-sunset" class="notranslate" translate="no">--:--</strong></div>
-        <div class="astro-item"><span data-i18n="lblMidnight">🌌 Полночь:</span> <strong id="time-midnight" class="notranslate" translate="no">--:--</strong></div>
-        <div class="astro-item"><span data-i18n="lblDayLength">⏳ Долгота дня:</span> <strong id="time-daylength">--</strong></div>
-        <div class="astro-item"><span data-i18n="lblBrahma">🧘‍♂️ Brahma Muhurta:</span> <strong id="time-brahma" class="notranslate" translate="no">--:--</strong></div>
-      </div>
+      <table class="data-table">
+        <tbody>
+          <tr><td data-i18n="lblSunrise">🌅 Восход:</td><td id="time-sunrise" class="val notranslate" translate="no">--:--</td></tr>
+          <tr><td data-i18n="lblNoon">☀️ Солнечный полдень:</td><td id="time-noon" class="val notranslate" translate="no">--:--</td></tr>
+          <tr><td data-i18n="lblSunset">🌇 Закат:</td><td id="time-sunset" class="val notranslate" translate="no">--:--</td></tr>
+          <tr><td data-i18n="lblMidnight">🌌 Полночь:</td><td id="time-midnight" class="val notranslate" translate="no">--:--</td></tr>
+          <tr><td data-i18n="lblDayLength">⏳ Долгота дня:</td><td id="time-daylength" class="val">-- ч -- мин</td></tr>
+          <tr><td data-i18n="lblBrahma">🧘‍♂️ Брахма-мухурта:</td><td id="time-brahma" class="val notranslate" translate="no">--:-- - --:--</td></tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- Таблица расписания -->
-    <div class="data-section">
+    <!-- Таблица 2: График периодов дош -->
+    <div class="table-card light-card">
       <h3 data-i18n="tblScheduleTitle">Расписание Дош на день</h3>
-      <div class="table-responsive">
-        <table class="schedule-table">
-          <thead>
-            <tr>
-              <th data-i18n="thPhase">Фаза</th>
-              <th data-i18n="thDosha">Доша</th>
-              <th data-i18n="thTime">Время</th>
-              <th data-i18n="thDuration">Длит.</th>
-            </tr>
-          </thead>
-          <tbody id="dosha-schedule-body"></tbody>
-        </table>
-      </div>
+      <table class="data-table dosha-schedule-table">
+        <thead>
+          <tr>
+            <th data-i18n="thPhase">Фаза</th>
+            <th data-i18n="thDosha">Доша</th>
+            <th data-i18n="thTime">Время</th>
+            <th data-i18n="thDuration">Длит.</th>
+          </tr>
+        </thead>
+        <tbody id="dosha-schedule-body"></tbody>
+      </table>
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
-  <script src="app.js"></script>
+  <!-- Контейнер Google Translate Widget (скрыт от глаз пользователя) -->
+  <div id="google_translate_element" style="display:none;"></div>
+
+  <!-- Cache-Busting JS -->
+  <script>
+    document.write('<script src="app.js?v=' + Date.now() + '"><\/script>');
+  </script>
 </body>
 </html>
